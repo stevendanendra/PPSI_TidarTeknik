@@ -16,6 +16,12 @@ if (isCustomerLoggedIn()) {
     exit;
 }
 
+if (!appConfig('allow_customer_register', false)) {
+    // Sesuai PMP: akun customer dibuat oleh Admin
+    header('Location: customer-login.php');
+    exit;
+}
+
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

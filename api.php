@@ -9,7 +9,7 @@ require_once 'auth.php';
 requireLogin(true); // endpoint AJAX: balas JSON 401, bukan redirect HTML
 session_write_close(); // sesi hanya dibaca; jangan blokir request paralel
 
-require_once 'db.php';
+require_once 'lib.php';
 
 // Error mysqli dilempar sebagai exception supaya transaksi bisa di-rollback.
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -188,6 +188,7 @@ switch ($action) {
             foreach ($data as $po) {
                 $id = (string)$po['id'];
                 $ids[] = $id;
+                $nomorPo = str($po, 'nomor') !== '' ? str($po, 'nomor') : nextDocNumber('po', 'PO');
                 run($conn, "INSERT INTO po (id, nomor, tanggal, supplier, kota, note1, note2, alamat_kirim, ppn_mode, disc, dp, total, status, catatan, termin)
                             VALUES (?, ?, COALESCE(NULLIF(?, ''), CURDATE()), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ON DUPLICATE KEY UPDATE
@@ -195,7 +196,7 @@ switch ($action) {
                                 note1 = VALUES(note1), note2 = VALUES(note2), alamat_kirim = VALUES(alamat_kirim),
                                 ppn_mode = VALUES(ppn_mode), disc = VALUES(disc), dp = VALUES(dp), total = VALUES(total),
                                 status = VALUES(status), catatan = VALUES(catatan), termin = VALUES(termin)",
-                    [$id, str($po, 'nomor'), str($po, 'tanggal'), str($po, 'supplier'), str($po, 'kota'),
+                    [$id, $nomorPo, str($po, 'tanggal'), str($po, 'supplier'), str($po, 'kota'),
                      str($po, 'note1'), str($po, 'note2'), str($po, 'alamatKirim'), str($po, 'ppnMode', 'none'),
                      (float)($po['disc'] ?? 0), (float)($po['dp'] ?? 0), (float)($po['total'] ?? 0),
                      str($po, 'status', 'Belum Bayar'), str($po, 'catatan'), (int)($po['termin'] ?? 30)]);
@@ -253,6 +254,7 @@ switch ($action) {
             foreach ($data as $nota) {
                 $id = (string)$nota['id'];
                 $ids[] = $id;
+                $nomorNota = str($nota, 'nomor') !== '' ? str($nota, 'nomor') : nextDocNumber('nota', 'INV');
                 run($conn, "INSERT INTO nota (id, nomor, tanggal, customer, alamat_invoice, alamat_sj, ref_po, ekspedisi, tujuan_kirim, tanggal_kirim, seri_faktur, pembayaran, tanggal_pembayaran, ppn_mode, disc, dp, total, status, catatan, termin)
                             VALUES (?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?, ?)
                             ON DUPLICATE KEY UPDATE
@@ -262,7 +264,7 @@ switch ($action) {
                                 seri_faktur = VALUES(seri_faktur), pembayaran = VALUES(pembayaran), tanggal_pembayaran = VALUES(tanggal_pembayaran),
                                 ppn_mode = VALUES(ppn_mode), disc = VALUES(disc), dp = VALUES(dp), total = VALUES(total),
                                 status = VALUES(status), catatan = VALUES(catatan), termin = VALUES(termin)",
-                    [$id, str($nota, 'nomor'), str($nota, 'tanggal'), str($nota, 'customer'),
+                    [$id, $nomorNota, str($nota, 'tanggal'), str($nota, 'customer'),
                      str($nota, 'alamatInvoice'), str($nota, 'alamatSJ'), str($nota, 'refPO'), str($nota, 'ekspedisi'),
                      str($nota, 'tujuanKirim'), str($nota, 'tanggalKirim'), str($nota, 'seriFaktur'),
                      (float)($nota['pembayaran'] ?? 0), str($nota, 'tanggalPembayaran'), str($nota, 'ppnMode', 'none'),
@@ -311,13 +313,14 @@ switch ($action) {
             foreach ($data as $pn) {
                 $id = (string)$pn['id'];
                 $ids[] = $id;
+                $nomorPn = str($pn, 'nomor') !== '' ? str($pn, 'nomor') : nextDocNumber('penawaran', 'SP');
                 run($conn, "INSERT INTO penawaran (id, nomor, tanggal, customer, kota, att, sub_judul, note, show_total, total, ppn_mode, disc, dp)
                             VALUES (?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ON DUPLICATE KEY UPDATE
                                 nomor = VALUES(nomor), tanggal = VALUES(tanggal), customer = VALUES(customer), kota = VALUES(kota),
                                 att = VALUES(att), sub_judul = VALUES(sub_judul), note = VALUES(note), show_total = VALUES(show_total),
                                 total = VALUES(total), ppn_mode = VALUES(ppn_mode), disc = VALUES(disc), dp = VALUES(dp)",
-                    [$id, str($pn, 'nomor'), str($pn, 'tanggal'), str($pn, 'customer'), str($pn, 'kota'), str($pn, 'att'),
+                    [$id, $nomorPn, str($pn, 'tanggal'), str($pn, 'customer'), str($pn, 'kota'), str($pn, 'att'),
                      str($pn, 'sub_judul'), str($pn, 'note'), isset($pn['show_total']) ? (int)$pn['show_total'] : 1,
                      (float)($pn['total'] ?? 0), str($pn, 'ppnMode', 'none'), (float)($pn['disc'] ?? 0), (float)($pn['dp'] ?? 0)]);
 
@@ -370,6 +373,58 @@ switch ($action) {
             }
             deleteMissing($conn, 'ledger', $ids);
         });
+        break;
+
+    /* ---------- Penawaran: kirim ke customer & revisi (V1/V2/V3) ---------- */
+    case 'penawaran_send':
+        $in = json_decode(file_get_contents('php://input'), true) ?: [];
+        $pn = dbRow("SELECT * FROM penawaran WHERE id = ?", [(string)($in['id'] ?? '')]);
+        if (!$pn) respond(['status' => 'error', 'message' => 'Penawaran tidak ditemukan'], 404);
+        $custId = $pn['customer_id'];
+        if (!$custId) {
+            // Cocokkan nama customer ke akun portal
+            $cust = dbRow("SELECT id FROM customers WHERE LOWER(nama) = LOWER(?) AND email IS NOT NULL AND email <> '' LIMIT 1", [$pn['customer']]);
+            if (!$cust) respond(['status' => 'error', 'message' => 'Customer "' . $pn['customer'] . '" belum punya akun portal (nama harus sama dengan data customer).'], 422);
+            $custId = $cust['id'];
+        }
+        run($conn, "UPDATE penawaran SET customer_id = ?, status = 'Dikirim', alasan_respon = NULL, responded_at = NULL WHERE id = ?", [$custId, $pn['id']]);
+        notify('customer', $custId, "Penawaran {$pn['nomor']} (V{$pn['versi']}) menunggu keputusan Anda.", 'customer-quotations.php');
+        echo json_encode(['status' => 'success']);
+        break;
+
+    case 'penawaran_revise':
+        $in = json_decode(file_get_contents('php://input'), true) ?: [];
+        $src = dbRow("SELECT * FROM penawaran WHERE id = ?", [(string)($in['id'] ?? '')]);
+        if (!$src) respond(['status' => 'error', 'message' => 'Penawaran tidak ditemukan'], 404);
+        $newId = newId('pn');
+        transaction($conn, function () use ($conn, $src, $newId) {
+            $root = $src['parent_id'] ?: $src['id'];
+            $maxV = dbRow("SELECT MAX(versi) AS m FROM penawaran WHERE id = ? OR parent_id = ?", [$root, $root]);
+            $versi = (int)($maxV['m'] ?? 1) + 1;
+            run($conn, "INSERT INTO penawaran (id, nomor, tanggal, customer, kota, att, sub_judul, note, show_total, total, ppn_mode, disc, dp, status, customer_id, order_id, versi, parent_id)
+                        VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, ?)",
+                [$newId, $src['nomor'], $src['customer'], $src['kota'], $src['att'], $src['sub_judul'], $src['note'],
+                 (int)$src['show_total'], (float)$src['total'], $src['ppn_mode'], (float)$src['disc'], (float)$src['dp'],
+                 $src['customer_id'], $src['order_id'], $versi, $root]);
+            run($conn, "INSERT INTO penawaran_items (penawaran_id, deskripsi, qty, satuan, price, amount, note_item, has_specs, specs)
+                        SELECT ?, deskripsi, qty, satuan, price, amount, note_item, has_specs, specs FROM penawaran_items WHERE penawaran_id = ?",
+                [$newId, $src['id']]);
+            // Versi lama yang sudah dikirim/ditolak ditandai digantikan revisi
+            run($conn, "UPDATE penawaran SET status = 'Revisi' WHERE id = ? AND status IN ('Dikirim', 'Ditolak')", [$src['id']]);
+        });
+        break;
+
+    /* ---------- Notifikasi internal (admin) ---------- */
+    case 'get_notifications':
+        autoCompleteOrders();
+        $rows = fetchAll($conn, "SELECT id, pesan, link, is_read, created_at FROM notifications WHERE audience = 'admin' ORDER BY id DESC LIMIT 30");
+        $unread = fetchAll($conn, "SELECT COUNT(*) AS c FROM notifications WHERE audience = 'admin' AND is_read = 0")[0]['c'];
+        echo json_encode(['status' => 'success', 'unread' => (int)$unread, 'items' => $rows]);
+        break;
+
+    case 'read_notifications':
+        run($conn, "UPDATE notifications SET is_read = 1 WHERE audience = 'admin'");
+        echo json_encode(['status' => 'success']);
         break;
 
     default:

@@ -619,5 +619,49 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// Menu admin tambahan (Akun Customer, Retur) + lonceng notifikasi internal
+document.addEventListener('DOMContentLoaded', () => {
+  const anchor = document.querySelector('.sidebar a[href="admin-products.php"]');
+  if (anchor && !document.querySelector('a[href="admin-customers.php"]')) {
+    const here = location.pathname.split('/').pop();
+    const mk = (href, icon, label) => {
+      const a = document.createElement('a');
+      a.href = href;
+      a.className = 'nav-item' + (here === href ? ' active' : '');
+      a.innerHTML = `<span class="nav-icon">${icon}</span> ${label}`;
+      return a;
+    };
+    anchor.after(mk('admin-customers.php', '🔑', 'Akun Customer'), mk('admin-returns.php', '↩️', 'Retur Barang'));
+  }
+
+  const actions = document.querySelector('.topbar-actions');
+  if (!actions || document.getElementById('notif-bell') || document.querySelector('.badge-portal')) return;
+  const wrap = document.createElement('div');
+  wrap.style.position = 'relative';
+  wrap.innerHTML = `<button type="button" class="btn btn-ghost" id="notif-bell" style="font-size:16px;padding:6px 10px" aria-label="Notifikasi">🔔<span id="notif-count" class="nav-badge" style="display:none;position:absolute;top:-4px;right:-4px">0</span></button>
+    <div id="notif-panel" class="card" style="display:none;position:absolute;right:0;top:44px;width:340px;max-width:85vw;z-index:50;padding:0;max-height:360px;overflow:auto"></div>`;
+  actions.prepend(wrap);
+  const countEl = wrap.querySelector('#notif-count'), panel = wrap.querySelector('#notif-panel');
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  async function load() {
+    try {
+      const res = await fetch('api.php?action=get_notifications&_t=' + Date.now());
+      const d = await res.json();
+      if (d.status !== 'success') return;
+      countEl.style.display = d.unread > 0 ? 'inline-block' : 'none';
+      countEl.textContent = d.unread;
+      panel.innerHTML = d.items.length
+        ? d.items.map(n => `<a href="${esc(n.link || '#')}" style="display:block;padding:10px 14px;border-bottom:1px solid var(--navy-200);font-size:12.5px;text-decoration:none;color:var(--navy-800);${n.is_read == 0 ? 'background:rgba(14,165,233,.08);font-weight:600' : ''}">${esc(n.pesan)}<br><small style="color:var(--navy-400)">${esc(n.created_at)}</small></a>`).join('')
+        : '<div style="padding:14px;font-size:12.5px;color:var(--navy-400)">Belum ada notifikasi.</div>';
+    } catch (e) {}
+  }
+  wrap.querySelector('#notif-bell').addEventListener('click', async () => {
+    const open = panel.style.display === 'block';
+    panel.style.display = open ? 'none' : 'block';
+    if (!open) { await fetch('api.php?action=read_notifications', { method: 'POST' }); setTimeout(load, 300); }
+  });
+  load(); setInterval(load, 15000);
+});
+
 // init on load
 initSeedData();

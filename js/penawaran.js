@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   pnList.forEach(pn => {
     const key = (pn.nomor && pn.nomor.trim() !== "") 
-      ? `num-${pn.nomor}` 
+      ? `num-${pn.nomor}-v${pn.versi || 1}` 
       : `val-${pn.customer}-${pn.tanggal}-${pn.total}`;
     
     if (!seen.has(key)) {
@@ -152,7 +152,7 @@ function renderPnTable(data) {
         : '';
 
     return `<tr>
-      <td class="td-mono">${n.nomor}</td>
+      <td class="td-mono">${n.nomor}${pnVersionBadge(n)}</td>
       <td>${fmt.date(n.tanggal)}</td>
       <td><strong>${n.customer}</strong></td>
       <td>${n.att || '-'}</td>
@@ -163,6 +163,8 @@ function renderPnTable(data) {
         <button class="btn btn-sm btn-warning btn-icon" title="Edit" onclick="editPn('${n.id}')">✏️</button>
         <button class="btn btn-sm btn-danger btn-icon" title="Hapus" onclick="deletePn('${n.id}')">🗑️</button>
         <button class="btn btn-sm btn-success" style="font-size:11px;padding:2px 6px" onclick="buatNotaDariPn('${n.id}')">Buat Nota</button>
+        ${n.status === 'Pending' || n.status === 'Ditolak' ? `<button class="btn btn-sm btn-ghost" style="font-size:11px;padding:2px 6px" title="Kirim ke portal customer untuk disetujui" onclick="kirimPn('${n.id}')">📤 Kirim</button>` : ''}
+        ${n.status !== 'Revisi' ? `<button class="btn btn-sm btn-ghost" style="font-size:11px;padding:2px 6px" title="Buat versi revisi (V${(n.versi || 1) + 1})" onclick="revisiPn('${n.id}')">🔁 Revisi</button>` : ''}
       </td>
     </tr>`;
   }).join('');
@@ -625,6 +627,43 @@ async function savePn() {
   } finally {
     resetBtn();
   }
+}
+
+// ===== VERSIONING & PERSETUJUAN CUSTOMER =====
+function pnVersionBadge(n) {
+  const v = parseInt(n.versi) || 1;
+  const cls = { Dikirim: 'badge-blue', Disetujui: 'badge-green', Ditolak: 'badge-danger', Revisi: 'badge-gray' }[n.status];
+  const st = cls ? ` <span class="badge ${cls}" style="font-size:9px;padding:1px 4px">${n.status}</span>` : '';
+  return `<br><span class="badge badge-amber" style="font-size:9px;padding:1px 4px">V${v}</span>${st}`;
+}
+
+async function pnAction(action, id) {
+  const res = await fetch(`api.php?action=${action}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.status !== 'success') throw new Error(json.message || 'Aksi gagal');
+}
+
+async function kirimPn(id) {
+  if (!confirmDialog('Kirim penawaran ini ke portal customer untuk disetujui/ditolak?')) return;
+  try {
+    await pnAction('penawaran_send', id);
+    showToast('Penawaran dikirim ke customer', 'success');
+    pnList = await dbStore.get(KEYS.PENAWARAN_LIST);
+    applyPnFilter();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+async function revisiPn(id) {
+  if (!confirmDialog('Buat versi revisi baru dari penawaran ini?')) return;
+  try {
+    await pnAction('penawaran_revise', id);
+    showToast('Versi revisi dibuat (status Draft)', 'success');
+    pnList = await dbStore.get(KEYS.PENAWARAN_LIST);
+    applyPnFilter();
+    updatePnStats();
+  } catch (e) { showToast(e.message, 'error'); }
 }
 
 // ===== DELETE =====

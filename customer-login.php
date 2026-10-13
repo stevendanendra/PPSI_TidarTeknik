@@ -18,6 +18,7 @@ if (isCustomerLoggedIn()) {
 
 $error   = '';
 $success = '';
+$allowRegister = (bool)appConfig('allow_customer_register', false);
 
 if (isset($_GET['registered']) && $_GET['registered'] == '1') {
     $success = 'Pendaftaran berhasil! Silakan masuk dengan email dan password Anda.';
@@ -57,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Password yang Anda masukkan salah.';
             }
         } else {
-            $error = 'Email tidak ditemukan. Pastikan email terdaftar atau silakan buat akun baru.';
+            $error = 'Email tidak ditemukan. Hubungi admin CV. Tidar Teknik untuk dibuatkan akun.';
         }
     }
 }
@@ -378,7 +379,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Switcher Tab -->
     <div class="nav-tabs-portal">
       <a href="customer-login.php" class="active">Masuk Akun</a>
-      <a href="customer-register.php">Daftar Akun Baru</a>
+      <?php if ($allowRegister): ?><a href="customer-register.php">Daftar Akun Baru</a><?php endif; ?>
     </div>
 
     <?php if ($success): ?>
@@ -439,7 +440,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
 
       <div class="card-footer">
-        Belum punya akun? <a href="customer-register.php">Daftar sekarang</a><br>
+        <a href="customer-forgot-password.php">Lupa password?</a><br>
+        <?php if ($allowRegister): ?>Belum punya akun? <a href="customer-register.php">Daftar sekarang</a><?php else: ?>Akun customer dibuat oleh admin CV. Tidar Teknik.<?php endif; ?><br>
         <span style="font-size:11px;opacity:.7;display:inline-block;margin-top:8px">
           Staff Internal Tidar Teknik? <a href="login.php" style="color:var(--navy-300)">Login Admin di sini</a>
         </span>

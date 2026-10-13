@@ -52,7 +52,7 @@ function getCurrentCustomer(): ?array {
         return null;
     }
     $cId = mysqli_real_escape_string($conn, $_SESSION[CUSTOMER_ID_KEY]);
-    $res = mysqli_query($conn, "SELECT id, nama, kode, kota, alamat, npwp, email, telepon, pic, status FROM customers WHERE id = '$cId' LIMIT 1");
+    $res = mysqli_query($conn, "SELECT id, nama, kode, kota, alamat, npwp, email, telepon, pic, status, must_change_password, tutorial_seen FROM customers WHERE id = '$cId' LIMIT 1");
     if ($res && $row = mysqli_fetch_assoc($res)) {
         return $row;
     }

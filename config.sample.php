@@ -13,6 +13,11 @@ return [
     // Dipakai hanya jika admin_password_hash kosong (mode pengembangan lokal):
     'admin_password'      => 'ganti-password-ini',
 
+    // Akun customer dibuat admin (PMP). Ubah ke true hanya bila ingin registrasi mandiri.
+    'allow_customer_register' => false,
+    // Tampilkan tautan reset password di layar (khusus dev/tanpa email server). Matikan di produksi.
+    'show_reset_link' => false,
+
     'db_host' => 'localhost',
     'db_user' => 'root',
     'db_pass' => '',

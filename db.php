@@ -3,6 +3,13 @@
  * Database configuration and connection
  */
 
+/** Nilai konfigurasi dari config.php (dengan default). */
+function appConfig(string $key, $default = null) {
+    static $c = null;
+    if ($c === null) $c = is_file(__DIR__ . '/config.php') ? (require __DIR__ . '/config.php') : [];
+    return $c[$key] ?? $default;
+}
+
 $cfg  = is_file(__DIR__ . '/config.php') ? (require __DIR__ . '/config.php') : [];
 $host = $cfg['db_host'] ?? 'localhost';
 $user = $cfg['db_user'] ?? 'root';
@@ -228,4 +235,7 @@ foreach ($tables as $sql) {
         die("Error creating table: " . mysqli_error($conn));
     }
 }
+
+require_once __DIR__ . '/schema_pmp.php';
+ensurePmpSchema($conn);
 ?>

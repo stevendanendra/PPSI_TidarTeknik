@@ -72,8 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_password'])) {
         $errorPass = 'Konfirmasi password baru tidak cocok.';
     } else {
         $hashed = password_hash($passBaru, PASSWORD_BCRYPT);
-        if (mysqli_query($conn, "UPDATE customers SET password = '$hashed' WHERE id = '$cId'")) {
+        if (mysqli_query($conn, "UPDATE customers SET password = '$hashed', must_change_password = 0 WHERE id = '$cId'")) {
             $successPass = 'Password akun berhasil diubah.';
+            if (isset($_GET['force'])) {
+                header('Location: customer-dashboard.php');
+                exit;
+            }
         } else {
             $errorPass = 'Gagal mengubah password: ' . mysqli_error($conn);
         }
@@ -83,6 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_password'])) {
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
   
+  <?php if (isset($_GET['force']) || !empty($currentCust['must_change_password'])): ?>
+    <div class="alert alert-error" style="margin-bottom:16px"><span>🔐</span> Demi keamanan, ganti password sementara Anda terlebih dahulu sebelum memakai portal.</div>
+  <?php endif; ?>
+
   <!-- FORM DATA PERUSAHAAN & KONTAK -->
   <div class="card">
     <div class="card-header">
@@ -170,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_password'])) {
         </div>
       <?php endif; ?>
 
-      <form method="POST" action="customer-profile.php" autocomplete="off">
+      <form method="POST" action="customer-profile.php<?= isset($_GET['force']) ? '?force=1' : '' ?>" autocomplete="off">
         <input type="hidden" name="action_password" value="1">
 
         <div class="form-group">
