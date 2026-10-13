@@ -1910,3 +1910,9 @@ tbody td {
     justify-content: center;
   }
 }
+/* Dashboard: dua kolom di desktop, satu kolom di layar kecil */
+.dash-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.dash-grid-2 > * { min-width: 0; }
+@media (max-width: 768px) {
+  .dash-grid-2 { grid-template-columns: minmax(0, 1fr); }
+}

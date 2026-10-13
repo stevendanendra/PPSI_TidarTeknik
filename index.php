@@ -384,7 +384,7 @@ include 'db.php';
       </div>
 
       <!-- CHARTS -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+      <div class="dash-grid-2" style="margin-bottom:20px">
         <div class="card">
           <div class="card-header">
             <span style="font-size:20px">📋</span>
@@ -422,7 +422,7 @@ include 'db.php';
       </div>
 
       <!-- RECENT TABLES -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="dash-grid-2">
         <!-- RECENT PO -->
         <div class="card">
           <div class="card-header">
@@ -599,10 +599,22 @@ include 'db.php';
       // ===== CHARTS =====
       const bulanShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
 
+      // Akhir rentang = bulan ini; bila tidak ada data dalam rentang itu (data lama),
+      // geser ke bulan data terbaru supaya grafik tidak kosong.
+      const chartEnd = (() => {
+        const dates = [...poList, ...notaList].map(x => new Date(x.tanggal)).filter(d => !isNaN(d));
+        if (!dates.length) return new Date(now.getFullYear(), now.getMonth(), 1);
+        const latest = new Date(Math.max(...dates));
+        const cur = new Date(now.getFullYear(), now.getMonth(), 1);
+        const latestM = new Date(latest.getFullYear(), latest.getMonth(), 1);
+        const windowStart = new Date(cur.getFullYear(), cur.getMonth() - 5, 1);
+        return latestM < windowStart ? latestM : cur;
+      })();
+
       function buildMonths(n) {
         const arr = [];
         for (let i = n - 1; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const d = new Date(chartEnd.getFullYear(), chartEnd.getMonth() - i, 1);
           arr.push({ label: bulanShort[d.getMonth()] + "'" + (d.getFullYear() % 100), month: d.getMonth(), year: d.getFullYear() });
         }
         return arr;
