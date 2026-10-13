@@ -4,22 +4,34 @@
  * CV. Tidar Teknik
  */
 
+// Buffer output supaya halaman bisa redirect (header Location) setelah header HTML tercetak
+ob_start();
+
 require_once __DIR__ . '/customer-auth.php';
+require_once __DIR__ . '/lib.php';
 requireCustomerLogin();
 
 $currentCust = getCurrentCustomer();
 $currentPage = basename($_SERVER['PHP_SELF']);
+autoCompleteOrders();
+
+// Akun yang dibuat admin / hasil reset wajib ganti password dulu
+if ($currentCust && !empty($currentCust['must_change_password'])
+    && !in_array($currentPage, ['customer-profile.php', 'customer-logout.php'], true)) {
+    header('Location: customer-profile.php?force=1');
+    exit;
+}
 
 // Hitung badge request yang pending/approved
 $cntReq = 0;
 $cntOrder = 0;
 if ($currentCust) {
     $cId = $currentCust['id'];
-    $rRes = mysqli_query($conn, "SELECT COUNT(*) FROM product_requests WHERE customer_id = '$cId' AND status IN ('pending', 'approved')");
-    if ($rRes) $cntReq = (int)mysqli_fetch_row($rRes)[0];
+    $cntReq   = (int)dbRow("SELECT COUNT(*) AS c FROM product_requests WHERE customer_id = ? AND status IN ('pending', 'approved')", [$cId])['c'];
+    $cntOrder = (int)dbRow("SELECT COUNT(*) AS c FROM orders WHERE customer_id = ? AND status_pesanan NOT IN ('selesai', 'dibatalkan')", [$cId])['c'];
 
-    $oRes = mysqli_query($conn, "SELECT COUNT(*) FROM orders WHERE customer_id = '$cId' AND status_pesanan NOT IN ('selesai', 'dibatalkan')");
-    if ($oRes) $cntOrder = (int)mysqli_fetch_row($oRes)[0];
+    $cntCart  = (int)(dbRow("SELECT COUNT(*) AS c FROM cart_items WHERE customer_id = ?", [$cId])['c'] ?? 0);
+    $cntQuote = (int)(dbRow("SELECT COUNT(*) AS c FROM penawaran WHERE customer_id = ? AND status = 'Dikirim'", [$cId])['c'] ?? 0);
 }
 ?>
 <!DOCTYPE html>
@@ -336,6 +348,18 @@ if ($currentCust) {
           <span class="nav-badge"><?= $cntReq ?></span>
         <?php endif; ?>
       </a>
+      <a href="customer-cart.php" class="nav-item <?= $currentPage === 'customer-cart.php' ? 'active' : '' ?>">
+        <span class="nav-icon">🛒</span> Keranjang
+        <?php if (($cntCart ?? 0) > 0): ?>
+          <span class="nav-badge"><?= $cntCart ?></span>
+        <?php endif; ?>
+      </a>
+      <a href="customer-quotations.php" class="nav-item <?= $currentPage === 'customer-quotations.php' ? 'active' : '' ?>">
+        <span class="nav-icon">📝</span> Penawaran
+        <?php if (($cntQuote ?? 0) > 0): ?>
+          <span class="nav-badge"><?= $cntQuote ?></span>
+        <?php endif; ?>
+      </a>
       <a href="customer-orders.php" class="nav-item <?= in_array($currentPage, ['customer-orders.php', 'customer-order-detail.php', 'customer-checkout.php']) ? 'active' : '' ?>">
         <span class="nav-icon">📦</span> Riwayat Pesanan
         <?php if ($cntOrder > 0): ?>
@@ -344,8 +368,14 @@ if ($currentCust) {
       </a>
 
       <div class="nav-section-title" style="margin-top:14px">Akun &amp; Bantuan</div>
+      <a href="customer-returns.php" class="nav-item <?= in_array($currentPage, ['customer-returns.php', 'customer-return-new.php']) ? 'active' : '' ?>">
+        <span class="nav-icon">↩️</span> Retur Barang
+      </a>
       <a href="customer-profile.php" class="nav-item <?= $currentPage === 'customer-profile.php' ? 'active' : '' ?>">
         <span class="nav-icon">👤</span> Profil &amp; Akun
+      </a>
+      <a href="customer-help.php" class="nav-item <?= $currentPage === 'customer-help.php' ? 'active' : '' ?>">
+        <span class="nav-icon">❓</span> Help Center
       </a>
     </nav>
 
@@ -373,6 +403,10 @@ if ($currentCust) {
       <div class="topbar-actions">
         <a href="customer-products.php" class="btn btn-ghost" style="font-size:12px">🔍 Cari Produk</a>
         <a href="customer-request.php?new=1" class="btn btn-primary" style="font-size:12px">➕ Request Barang</a>
+        <div style="position:relative">
+          <button type="button" class="btn btn-ghost" id="notif-bell" style="font-size:16px;padding:6px 10px" aria-label="Notifikasi">🔔<span id="notif-count" class="nav-badge" style="display:none;position:absolute;top:-4px;right:-4px">0</span></button>
+          <div id="notif-panel" class="card" style="display:none;position:absolute;right:0;top:44px;width:320px;max-width:85vw;z-index:50;padding:0;max-height:360px;overflow:auto"></div>
+        </div>
         <div class="user-pill">
           <div class="user-avatar"><?= strtoupper(substr($currentCust['nama'] ?? 'C', 0, 1)) ?></div>
           <div class="user-meta">

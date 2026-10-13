@@ -17,53 +17,81 @@ if (empty($orderId)) {
     exit;
 }
 
-$cleanOId = mysqli_real_escape_string($conn, $orderId);
-$oRes = mysqli_query($conn, "SELECT * FROM orders WHERE id = '$cleanOId' AND customer_id = '$cId' LIMIT 1");
-if (!$oRes || mysqli_num_rows($oRes) == 0) {
+$order = dbRow("SELECT * FROM orders WHERE id = ? AND customer_id = ? LIMIT 1", [$orderId, $cId]);
+if (!$order) {
     echo "<div class='alert alert-error'>Pesanan tidak ditemukan. <a href='customer-orders.php'>Kembali ke riwayat pesanan</a></div>";
     require_once 'customer-footer.php';
     exit;
 }
 
-$order = mysqli_fetch_assoc($oRes);
-
 // Handle konfirmasi pembayaran oleh customer
 $alertMsg = '';
 $alertType = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_payment'])) {
-    $namaPengirim = trim($_POST['nama_pengirim'] ?? '');
-    $bankPengirim = trim($_POST['bank_pengirim'] ?? '');
-    $catatanBayar = trim($_POST['catatan_bayar'] ?? '');
+$hasPo = (bool)dbRow("SELECT 1 AS x FROM po WHERE order_id = ? LIMIT 1", [$orderId]);
+$orderOpen = !in_array($order['status_pesanan'], ['dibatalkan'], true);
 
-    $infoBayar = "Konfirmasi Customer: An. {$namaPengirim} ({$bankPengirim}). " . $catatanBayar;
-    $cleanInfo = mysqli_real_escape_string($conn, $infoBayar);
-
-    $upd = "UPDATE orders SET 
-                status_pembayaran = 'sudah_bayar',
-                waktu_bayar = NOW(),
-                bukti_transfer = '$cleanInfo'
-            WHERE id = '$cleanOId' AND customer_id = '$cId'";
-    if (mysqli_query($conn, $upd)) {
-        $alertMsg = 'Konfirmasi pembayaran berhasil dikirim. Admin CV. Tidar Teknik akan segera memverifikasi.';
-        $alertType = 'success';
-        // Refresh data order
-        $order = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM orders WHERE id = '$cleanOId' LIMIT 1"));
-    } else {
-        $alertMsg = 'Gagal menyimpan konfirmasi pembayaran: ' . mysqli_error($conn);
-        $alertType = 'error';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $orderOpen) {
+    // 1) Upload bukti pembayaran (DP / Term / Partial / Pelunasan)
+    if (isset($_POST['submit_payment'])) {
+        $tipe   = $_POST['tipe'] ?? 'pelunasan';
+        $jumlah = (float)str_replace(['.', ','], ['', '.'], (string)($_POST['jumlah'] ?? '0'));
+        $sisa   = (float)$order['total'] - (float)$order['total_dibayar'];
+        if (!in_array($tipe, ['dp', 'term', 'partial', 'pelunasan'], true)) {
+            $alertMsg = 'Jenis pembayaran tidak valid.'; $alertType = 'error';
+        } elseif (!is_finite($jumlah) || $jumlah <= 0) {
+            $alertMsg = 'Jumlah pembayaran harus lebih dari 0.'; $alertType = 'error';
+        } elseif ($jumlah > $sisa + 0.01) {
+            $alertMsg = 'Jumlah melebihi sisa tagihan (Rp ' . number_format($sisa, 0, ',', '.') . ').'; $alertType = 'error';
+        } elseif (throttleBlocked('upload', $cId, 20, 60)) {
+            $alertMsg = 'Terlalu banyak unggahan. Coba lagi dalam 1 jam.'; $alertType = 'error';
+        } elseif (($saved = saveUpload($_FILES['bukti'] ?? [], 'bukti', MIME_PROOF, 5 * 1024 * 1024))[1]) {
+            $alertMsg = $saved[1]; $alertType = 'error';
+        } elseif (!($path = $saved[0])) {
+            $alertMsg = 'Bukti transfer (foto/PDF) wajib diunggah.'; $alertType = 'error';
+        } else {
+            throttleHit('upload', $cId);
+            $catatan = 'An. ' . trim($_POST['nama_pengirim'] ?? '') . ' (' . trim($_POST['bank_pengirim'] ?? '') . '). ' . trim($_POST['catatan_bayar'] ?? '');
+            dbRun("INSERT INTO payments (order_id, customer_id, tipe, jumlah, bukti_file, catatan) VALUES (?, ?, ?, ?, ?, ?)",
+                [$orderId, $cId, $tipe, $jumlah, $path, $catatan]);
+            dbRun("UPDATE orders SET waktu_bayar = NOW() WHERE id = ?", [$orderId]);
+            recalcOrderPayment($orderId);
+            notify('admin', null, "{$currentCust['nama']} mengunggah bukti pembayaran " . strtoupper($tipe) . " Rp " . number_format($jumlah, 0, ',', '.') . " untuk {$order['nomor_order']}.", 'admin-order-detail.php?id=' . $orderId);
+            $alertMsg = 'Bukti pembayaran terkirim. Admin CV. Tidar Teknik akan memverifikasi.'; $alertType = 'success';
+        }
     }
+    // 2) Konfirmasi barang diterima
+    if (isset($_POST['confirm_received']) && $order['status_pesanan'] === 'dikirim') {
+        dbRun("UPDATE orders SET status_pesanan = 'selesai', tanggal_terima = NOW() WHERE id = ? AND customer_id = ?", [$orderId, $cId]);
+        notify('admin', null, "{$currentCust['nama']} mengonfirmasi penerimaan pesanan {$order['nomor_order']}.", 'admin-order-detail.php?id=' . $orderId);
+        $alertMsg = 'Terima kasih! Pesanan ditandai selesai.'; $alertType = 'success';
+    }
+    // 3) Pembatalan (hanya sebelum PO dibuat)
+    if (isset($_POST['cancel_order']) && in_array($order['status_pesanan'], ['pending', 'diproses'], true) && !$hasPo) {
+        $alasan = trim($_POST['alasan_batal'] ?? '');
+        if ($alasan === '') {
+            $alertMsg = 'Mohon isi alasan pembatalan.'; $alertType = 'error';
+        } else {
+            dbRun("UPDATE orders SET status_pesanan = 'dibatalkan', alasan_batal = ? WHERE id = ? AND customer_id = ?", [$alasan, $orderId, $cId]);
+            notify('admin', null, "{$currentCust['nama']} membatalkan pesanan {$order['nomor_order']}: $alasan", 'admin-order-detail.php?id=' . $orderId);
+            $alertMsg = 'Pesanan dibatalkan. Jika sudah ada pembayaran, admin akan memproses pengembalian dana.'; $alertType = 'success';
+        }
+    }
+    $order = dbRow("SELECT * FROM orders WHERE id = ?", [$orderId]);
+    $hasPo = (bool)dbRow("SELECT 1 AS x FROM po WHERE order_id = ? LIMIT 1", [$orderId]);
 }
 
-// Load items
-$iRes = mysqli_query($conn, "SELECT * FROM order_items WHERE order_id = '$cleanOId'");
-$items = mysqli_fetch_all($iRes, MYSQLI_ASSOC);
+// Load items & pembayaran
+$items = dbRows("SELECT * FROM order_items WHERE order_id = ?", [$orderId]);
+$payments = dbRows("SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC", [$orderId]);
+$sisaTagihan = max(0.0, (float)$order['total'] - (float)$order['total_dibayar']);
+$returnCount = (int)dbRow("SELECT COUNT(*) AS c FROM returns WHERE order_id = ?", [$orderId])['c'];
 
 // Visual status tracker flags
 $statusPesan = $order['status_pesanan'];
 $statusBayar = $order['status_pembayaran'];
 
 $step1 = true; // Pesanan dibuat
-$step2 = in_array($statusBayar, ['sudah_bayar', 'terverifikasi']); // Pembayaran
+$step2 = in_array($statusBayar, ['sudah_bayar', 'terverifikasi', 'dp', 'term', 'partial', 'paid']); // Pembayaran
 $step3 = in_array($statusPesan, ['diproses', 'dikirim', 'selesai']); // Diproses
 $step4 = in_array($statusPesan, ['dikirim', 'selesai']); // Dikirim
 $step5 = ($statusPesan === 'selesai'); // Selesai
@@ -154,7 +182,7 @@ $step5 = ($statusPesan === 'selesai'); // Selesai
   </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr 380px; gap: 24px; align-items: start;">
+<div class="cust-split cust-split-right">
   
   <!-- SISI KIRI: RINCIAN ITEM -->
   <div class="card">
@@ -242,27 +270,51 @@ $step5 = ($statusPesan === 'selesai'); // Selesai
         <div style="margin-bottom: 16px;">
           <div style="font-size: 11px; color: var(--navy-400); text-transform: uppercase;">Status Pembayaran</div>
           <div style="margin-top: 4px;">
-            <?php if ($order['status_pembayaran'] === 'terverifikasi'): ?>
-              <span class="badge badge-green" style="font-size: 12px;">🟢 Lunas / Terverifikasi</span>
+            <?php if (in_array($order['status_pembayaran'], ['paid', 'terverifikasi'], true)): ?>
+              <span class="badge badge-green" style="font-size: 12px;">🟢 Lunas (Paid)</span>
+            <?php elseif ($order['status_pembayaran'] === 'dp'): ?>
+              <span class="badge badge-blue" style="font-size: 12px;">🔵 DP Terverifikasi</span>
+            <?php elseif ($order['status_pembayaran'] === 'term'): ?>
+              <span class="badge badge-blue" style="font-size: 12px;">🔵 Term Terverifikasi</span>
+            <?php elseif ($order['status_pembayaran'] === 'partial'): ?>
+              <span class="badge badge-blue" style="font-size: 12px;">🔵 Dibayar Sebagian (Partial)</span>
             <?php elseif ($order['status_pembayaran'] === 'sudah_bayar'): ?>
               <span class="badge badge-blue" style="font-size: 12px;">🔵 Menunggu Verifikasi Admin</span>
+            <?php elseif ($order['status_pembayaran'] === 'dibatalkan'): ?>
+              <span class="badge badge-red" style="font-size: 12px;">🔴 Dibatalkan</span>
             <?php else: ?>
               <span class="badge badge-amber" style="font-size: 12px;">🟡 Menunggu Pembayaran</span>
             <?php endif; ?>
+            <div style="font-size: 12px; color: var(--navy-600); margin-top: 6px;">
+              Terbayar: <strong>Rp <?= number_format((float)$order['total_dibayar'], 0, ',', '.') ?></strong>
+              &nbsp;•&nbsp; Sisa: <strong>Rp <?= number_format($sisaTagihan, 0, ',', '.') ?></strong>
+            </div>
           </div>
         </div>
 
-        <?php if ($order['status_pembayaran'] === 'menunggu_pembayaran'): ?>
+        <?php if ($order['status_pembayaran'] !== 'dibatalkan' && $orderOpen && $sisaTagihan > 0.01): ?>
           <div style="background: rgba(14, 165, 233, 0.08); border: 1px dashed rgba(56, 189, 248, 0.4); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 18px; font-size: 12px;">
-            <strong>Silakan transfer total pembayaran ke:</strong><br>
+            <strong>Silakan transfer ke:</strong><br>
             Bank BCA: <strong>123-456-7890</strong><br>
-            Bank Mandiri: <strong>098-765-4321</strong><br>
             a/n <strong>CV. TIDAR TEKNIK</strong><br>
-            Jumlah: <strong style="color:var(--teal-600); font-size:14px;">Rp <?= number_format($order['total'], 0, ',', '.') ?></strong>
+            Sisa tagihan: <strong style="color:var(--teal-600); font-size:14px;">Rp <?= number_format($sisaTagihan, 0, ',', '.') ?></strong>
           </div>
 
-          <!-- FORM KONFIRMASI PEMBAYARAN -->
-          <form method="POST" action="">
+          <!-- FORM UPLOAD BUKTI PEMBAYARAN -->
+          <form method="POST" action="" enctype="multipart/form-data">
+            <div class="form-group">
+              <label class="form-label required">Jenis Pembayaran</label>
+              <select name="tipe" class="form-control" required>
+                <option value="dp">DP (Uang Muka)</option>
+                <option value="term">Term (Termin)</option>
+                <option value="partial">Partial (Sebagian)</option>
+                <option value="pelunasan" selected>Pelunasan</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label required">Jumlah Ditransfer (Rp)</label>
+              <input type="number" name="jumlah" class="form-control" min="1" step="1" value="<?= (int)round($sisaTagihan) ?>" required>
+            </div>
             <div class="form-group">
               <label class="form-label required">Nama Pemilik Rekening / Pengirim</label>
               <input type="text" name="nama_pengirim" class="form-control" placeholder="Contoh: Hendra / PT. Indo Mina" required>
@@ -272,27 +324,79 @@ $step5 = ($statusPesan === 'selesai'); // Selesai
               <input type="text" name="bank_pengirim" class="form-control" placeholder="Contoh: BCA / Mandiri / BNI" required>
             </div>
             <div class="form-group">
-              <label class="form-label">Nomor Referensi / Catatan</label>
+              <label class="form-label required">Bukti Transfer (JPG/PNG/WebP/PDF, maks 5 MB)</label>
+              <input type="file" name="bukti" class="form-control" accept="image/jpeg,image/png,image/webp,application/pdf" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Catatan</label>
               <input type="text" name="catatan_bayar" class="form-control" placeholder="Contoh: Transfer m-banking jam 14:30">
             </div>
 
-            <button type="submit" name="confirm_payment" class="btn btn-success" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700;">
-              ✅ Konfirmasi Saya Sudah Bayar
+            <button type="submit" name="submit_payment" class="btn btn-success" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700;">
+              📤 Kirim Bukti Pembayaran
             </button>
           </form>
-        <?php else: ?>
-          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-sm); padding: 14px; font-size: 12.5px; color: var(--navy-800);">
-            <strong>Data Konfirmasi:</strong><br>
-            <?= nl2br(htmlspecialchars($order['bukti_transfer'] ?: 'Pembayaran telah dikonfirmasi.')) ?>
-            <?php if (!empty($order['waktu_bayar'])): ?>
-              <div style="font-size: 11px; color: var(--navy-500); margin-top: 4px;">
-                Waktu konfirmasi: <?= date('d/m/Y H:i', strtotime($order['waktu_bayar'])) ?>
+        <?php endif; ?>
+
+        <?php if ($payments): ?>
+          <div style="margin-top: 18px; font-size: 12.5px;">
+            <strong>Riwayat Pembayaran</strong>
+            <?php foreach ($payments as $pm): ?>
+              <div style="border-top: 1px solid var(--navy-200); padding: 8px 0;">
+                <span class="badge badge-gray" style="font-size:10px"><?= h(strtoupper($pm['tipe'])) ?></span>
+                <strong>Rp <?= number_format((float)$pm['jumlah'], 0, ',', '.') ?></strong>
+                <?php if ($pm['status'] === 'terverifikasi'): ?><span class="badge badge-green" style="font-size:10px">Terverifikasi</span>
+                <?php elseif ($pm['status'] === 'ditolak'): ?><span class="badge badge-red" style="font-size:10px">Ditolak</span>
+                <?php else: ?><span class="badge badge-amber" style="font-size:10px">Menunggu verifikasi</span><?php endif; ?>
+                <div style="color: var(--navy-500); font-size: 11px;">
+                  <?= h(date('d/m/Y H:i', strtotime($pm['created_at']))) ?>
+                  <?php if ($pm['bukti_file']): ?> • <a href="download.php?t=payment&id=<?= (int)$pm['id'] ?>" target="_blank" rel="noopener">Lihat bukti</a><?php endif; ?>
+                </div>
+                <?php if ($pm['catatan_admin']): ?><div style="font-size: 11px; color: var(--navy-600);">Admin: <?= h($pm['catatan_admin']) ?></div><?php endif; ?>
               </div>
-            <?php endif; ?>
+            <?php endforeach; ?>
           </div>
         <?php endif; ?>
       </div>
     </div>
+
+
+    <?php if ($order['status_pesanan'] === 'dikirim'): ?>
+    <div class="card">
+      <div class="card-header"><span style="font-size: 18px;">📦</span><div class="card-title">Konfirmasi Penerimaan</div></div>
+      <div class="card-body" style="padding: 20px; font-size: 12.5px;">
+        <p style="margin: 0 0 12px 0;">Sudah menerima barang? Konfirmasi agar pesanan selesai. Bila tidak dikonfirmasi, pesanan otomatis selesai <?= (int)AUTO_COMPLETE_DAYS ?> hari setelah dikirim.</p>
+        <form method="POST" onsubmit="return confirm('Konfirmasi barang sudah diterima dengan baik?')">
+          <button type="submit" name="confirm_received" class="btn btn-success" style="width: 100%; justify-content: center;">✅ Barang Sudah Diterima</button>
+        </form>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (in_array($order['status_pesanan'], ['pending', 'diproses'], true) && !$hasPo): ?>
+    <div class="card">
+      <div class="card-header"><span style="font-size: 18px;">🚫</span><div class="card-title">Batalkan Pesanan</div></div>
+      <div class="card-body" style="padding: 20px; font-size: 12.5px;">
+        <p style="margin: 0 0 12px 0;">Pesanan masih bisa dibatalkan selama belum diteruskan ke supplier (PO belum dibuat).</p>
+        <form method="POST" onsubmit="return confirm('Batalkan pesanan ini?')">
+          <textarea name="alasan_batal" class="form-control" rows="2" placeholder="Alasan pembatalan" required></textarea>
+          <button type="submit" name="cancel_order" class="btn btn-danger" style="width: 100%; justify-content: center; margin-top: 10px;">❌ Batalkan Pesanan</button>
+        </form>
+      </div>
+    </div>
+    <?php elseif ($order['status_pesanan'] === 'dibatalkan'): ?>
+    <div class="alert alert-error"><span>❌</span> Pesanan dibatalkan<?= $order['alasan_batal'] ? ': ' . h($order['alasan_batal']) : '' ?></div>
+    <?php endif; ?>
+
+    <?php if (in_array($order['status_pesanan'], ['dikirim', 'selesai'], true)): ?>
+    <div class="card">
+      <div class="card-header"><span style="font-size: 18px;">↩️</span><div class="card-title">Retur Barang</div></div>
+      <div class="card-body" style="padding: 20px; font-size: 12.5px;">
+        <p style="margin: 0 0 12px 0;">Barang rusak atau tidak sesuai? Ajukan retur lengkap dengan foto/video.<?= $returnCount ? " (Sudah ada $returnCount pengajuan.)" : '' ?></p>
+        <a href="customer-return-new.php?order_id=<?= urlencode($order['id']) ?>" class="btn btn-warning" style="width: 100%; justify-content: center;">↩️ Ajukan Retur</a>
+      </div>
+    </div>
+    <?php endif; ?>
 
   </div>
 

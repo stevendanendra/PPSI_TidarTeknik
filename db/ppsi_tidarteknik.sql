@@ -40,7 +40,7 @@ CREATE TABLE `customers` (
   `pic` varchar(100) DEFAULT NULL,
   `status` varchar(20) DEFAULT 'active',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `customers`
@@ -76,7 +76,7 @@ CREATE TABLE `customer_wishlist` (
   `customer_id` varchar(50) NOT NULL,
   `product_id` varchar(50) NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -91,7 +91,7 @@ CREATE TABLE `ledger` (
   `nama` varchar(255) DEFAULT NULL,
   `data` longtext,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `ledger`
@@ -128,7 +128,7 @@ CREATE TABLE `nota` (
   `status` varchar(50) DEFAULT 'Pending',
   `catatan` text,
   `termin` int DEFAULT '30'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `nota`
@@ -193,7 +193,7 @@ CREATE TABLE `nota_items` (
   `amount` decimal(15,2) DEFAULT NULL,
   `has_specs` tinyint(1) DEFAULT '0',
   `specs` text
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `nota_items`
@@ -291,7 +291,7 @@ CREATE TABLE `orders` (
   `no_resi` varchar(100) DEFAULT NULL,
   `catatan` text,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -311,7 +311,7 @@ CREATE TABLE `order_items` (
   `subtotal` decimal(15,2) NOT NULL DEFAULT '0.00',
   `spesifikasi` text,
   `catatan` text
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -334,7 +334,7 @@ CREATE TABLE `penawaran` (
   `ppn_mode` varchar(20) DEFAULT 'none',
   `disc` decimal(15,2) DEFAULT '0.00',
   `dp` decimal(15,2) DEFAULT '0.00'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `penawaran`
@@ -388,7 +388,7 @@ CREATE TABLE `penawaran_items` (
   `note_item` text,
   `has_specs` tinyint(1) DEFAULT '0',
   `specs` text
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `penawaran_items`
@@ -471,7 +471,7 @@ CREATE TABLE `po` (
   `status` varchar(50) DEFAULT 'Pending',
   `catatan` text,
   `termin` int DEFAULT '30'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `po`
@@ -532,7 +532,7 @@ CREATE TABLE `po_items` (
   `amount` decimal(15,2) DEFAULT NULL,
   `has_specs` tinyint(1) DEFAULT '0',
   `specs` text
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `po_items`
@@ -620,7 +620,7 @@ CREATE TABLE `products` (
   `supplier_id` varchar(50) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `products`
@@ -655,7 +655,7 @@ CREATE TABLE `product_requests` (
   `catatan_admin` text,
   `tanggal_review` datetime DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `product_requests`
@@ -676,7 +676,7 @@ CREATE TABLE `suppliers` (
   `kode` varchar(50) DEFAULT NULL,
   `kota` varchar(100) DEFAULT NULL,
   `alamat` text
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data untuk tabel `suppliers`

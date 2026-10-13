@@ -91,7 +91,7 @@ function buildFilterDropdowns() {
   if (sel) {
     const currentVal = sel.value;
     sel.innerHTML = '<option value="">Semua Supplier</option>' +
-      suppNames.map(n => `<option value="${n}">${n}</option>`).join('');
+      suppNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
     if (currentVal && suppNames.includes(currentVal)) sel.value = currentVal;
   }
 
@@ -105,7 +105,7 @@ function buildFilterDropdowns() {
   if (selYear) {
     const currentYear = selYear.value;
     selYear.innerHTML = '<option value="">Semua Tahun</option>' +
-      years.map(y => `<option value="${y}">${y}</option>`).join('');
+      years.map(y => `<option value="${esc(y)}">${esc(y)}</option>`).join('');
     if (currentYear && years.includes(currentYear)) selYear.value = currentYear;
   }
 }
@@ -224,10 +224,10 @@ function renderPOTable(data) {
         : '<span class="badge badge-amber">Belum Bayar</span>';
 
     return `<tr>
-      <td class="td-mono">${p.nomor}</td>
+      <td class="td-mono">${esc(p.nomor)}</td>
       <td>${fmt.date(p.tanggal)}<br><small style="color:var(--navy-400)">Due: ${fmt.date(dueStr)}</small></td>
-      <td><strong>${p.supplier}</strong><br><small style="color:var(--navy-500)">${p.kota || ''}</small></td>
-      <td>${p.note1 || ''}<br><small>${p.note2 || ''}</small></td>
+      <td><strong>${esc(p.supplier)}</strong><br><small style="color:var(--navy-500)">${esc(p.kota || '')}</small></td>
+      <td>${esc(p.note1 || '')}<br><small>${esc(p.note2 || '')}</small></td>
       <td>${ppnBadge}</td>
       <td>${statusBadge}</td>
       <td class="td-amount">${fmt.rupiah(totals.grandTotal)}</td>
@@ -389,7 +389,7 @@ function renderPOItems() {
       <td>
         <div style="display: flex; gap: 10px; align-items: flex-start;">
           <div style="flex: 1;">
-            <textarea class="form-control desc-multiline" placeholder="Ketik nama dan spesifikasi..." onchange="updatePOItem(${i},'desc',this.value)">${item.desc || ''}</textarea>
+            <textarea class="form-control desc-multiline" placeholder="Ketik nama dan spesifikasi..." onchange="updatePOItem(${i},'desc',this.value)">${esc(item.desc || '')}</textarea>
             <button type="button" class="btn-spec-toggle ${hasSpecs ? 'active' : ''}" onclick="toggleSpecPO(${i})" style="margin-top: 4px;">
               ⚙️ Spesifikasi ${hasSpecs ? '(Aktif)' : ''}
             </button>
@@ -398,29 +398,29 @@ function renderPOItems() {
           <div class="spec-grid" style="display: ${hasSpecs ? 'grid' : 'none'}; margin-top: 0; width: 200px; flex-shrink: 0;">
             <div class="spec-field">
               <label>Capacity</label>
-              <input type="text" class="form-control" value="${s.capacity || ''}" oninput="updateSpecPO(${i},'capacity',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.capacity || '')}" oninput="updateSpecPO(${i},'capacity',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>Pressure</label>
-              <input type="text" class="form-control" value="${s.pressure || ''}" oninput="updateSpecPO(${i},'pressure',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.pressure || '')}" oninput="updateSpecPO(${i},'pressure',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>In/Outlet</label>
-              <input type="text" class="form-control" value="${s.inoutlet || ''}" oninput="updateSpecPO(${i},'inoutlet',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.inoutlet || '')}" oninput="updateSpecPO(${i},'inoutlet',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>Power</label>
-              <input type="text" class="form-control" value="${s.power || ''}" oninput="updateSpecPO(${i},'power',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.power || '')}" oninput="updateSpecPO(${i},'power',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>Material</label>
-              <input type="text" class="form-control" value="${s.material || ''}" oninput="updateSpecPO(${i},'material',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.material || '')}" oninput="updateSpecPO(${i},'material',this.value)" placeholder="...">
             </div>
           </div>
         </div>
       </td>
-      <td><input class="form-control" type="number" step="1" min="0" placeholder="Qty" value="${item.qty || ''}" oninput="updatePOItemQty(${i},this.value)" style="text-align:center"></td>
-      <td><input class="form-control" type="text" placeholder="Type" value="${item.type || ''}" oninput="updatePOItem(${i},'type',this.value)"></td>
+      <td><input class="form-control" type="number" step="1" min="0" placeholder="Qty" value="${esc(item.qty || '')}" oninput="updatePOItemQty(${i},this.value)" style="text-align:center"></td>
+      <td><input class="form-control" type="text" placeholder="Type" value="${esc(item.type || '')}" oninput="updatePOItem(${i},'type',this.value)"></td>
       <td><input class="form-control mask-money" type="text" placeholder="0" value="${item.price ? fmt.formatInput(item.price) : ''}" oninput="updatePOItemPrice(${i},this.value)" style="text-align:right"></td>
       <td><input class="form-control po-item-amount" type="text" value="${item.amount ? fmt.formatInput(item.amount) : ''}" readonly style="text-align:right;background:var(--navy-50);color:var(--em-600);font-weight:700"></td>
       <td class="item-row-del"><button class="btn-del-row" onclick="deletePOItem(${i})" title="Hapus baris">✕</button></td>

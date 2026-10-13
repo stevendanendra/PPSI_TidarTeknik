@@ -1,7 +1,8 @@
 <?php
 /**
- * customer-checkout.php — Halaman Checkout & Pemilihan Pembayaran (Fase 2)
- * Sesuai Sitemap 3.3 Fase 2: Checkout -> Pilih Metode Bayar -> Bayar -> Konfirmasi
+ * customer-checkout.php — Checkout & Pemilihan Pembayaran
+ * Sumber item: keranjang (?cart=1, multi-produk), request disetujui (?request_id=), atau produk langsung (?product_id=).
+ * Stok tidak ditampilkan/dicek (sesuai PMP); ketersediaan dikonfirmasi admin ke supplier.
  */
 
 $pageTitle = 'Checkout Pesanan';
@@ -11,153 +12,137 @@ require_once 'customer-header.php';
 $cId = $currentCust['id'];
 $errorMsg = '';
 
-// Ambil sumber item: dari produk ready stock ATAU dari approved request
+$cartMode  = isset($_GET['cart']) || !empty($_POST['cart']);
 $productId = trim($_GET['product_id'] ?? '');
 $requestId = trim($_GET['request_id'] ?? '');
 
-$checkoutItem = null;
-$sourceType   = ''; // 'product' atau 'request'
+$items = []; // item: request_id, product_id, nama_barang, spesifikasi, satuan, harga_satuan, qty, qty_editable
+$sourceType = '';
 
-if (!empty($requestId)) {
-    $cleanReqId = mysqli_real_escape_string($conn, $requestId);
-    $resR = mysqli_query($conn, "SELECT * FROM product_requests WHERE id = '$cleanReqId' AND customer_id = '$cId' LIMIT 1");
-    if ($resR && $rowR = mysqli_fetch_assoc($resR)) {
+if ($cartMode) {
+    $sourceType = 'cart';
+    $rows = dbRows("SELECT c.product_id, c.qty, p.nama, p.spesifikasi, p.satuan, p.harga
+                    FROM cart_items c JOIN products p ON p.id = c.product_id AND p.is_active = 1
+                    WHERE c.customer_id = ? ORDER BY c.id", [$cId]);
+    foreach ($rows as $r) {
+        $items[] = ['request_id' => null, 'product_id' => $r['product_id'], 'nama_barang' => $r['nama'],
+                    'spesifikasi' => $r['spesifikasi'], 'satuan' => $r['satuan'], 'harga_satuan' => (float)$r['harga'],
+                    'qty' => (float)$r['qty'], 'qty_editable' => true];
+    }
+} elseif ($requestId !== '') {
+    $rowR = dbRow("SELECT * FROM product_requests WHERE id = ? AND customer_id = ?", [$requestId, $cId]);
+    if ($rowR) {
         if ($rowR['status'] !== 'approved') {
             echo "<div class='alert alert-error'>Permintaan barang ini belum disetujui atau sudah diproses. <a href='customer-request.php'>Lihat riwayat request</a></div>";
             require_once 'customer-footer.php';
             exit;
         }
         $sourceType = 'request';
-        $checkoutItem = [
-            'request_id'   => $rowR['id'],
-            'product_id'   => $rowR['product_id'],
-            'nama_barang'  => $rowR['nama_barang'],
-            'spesifikasi'  => $rowR['spesifikasi'],
-            'qty'          => (float)$rowR['qty'],
-            'satuan'       => $rowR['satuan'],
-            'harga_satuan' => (float)$rowR['harga_disetujui'],
-            'subtotal'     => (float)$rowR['qty'] * (float)$rowR['harga_disetujui'],
-            'catatan'      => $rowR['catatan_admin']
-        ];
+        $items[] = ['request_id' => $rowR['id'], 'product_id' => $rowR['product_id'], 'nama_barang' => $rowR['nama_barang'],
+                    'spesifikasi' => $rowR['spesifikasi'], 'satuan' => $rowR['satuan'], 'harga_satuan' => (float)$rowR['harga_disetujui'],
+                    'qty' => (float)$rowR['qty'], 'qty_editable' => false];
     }
-} elseif (!empty($productId)) {
-    $cleanPId = mysqli_real_escape_string($conn, $productId);
-    $resP = mysqli_query($conn, "SELECT * FROM products WHERE id = '$cleanPId' AND is_active = 1 LIMIT 1");
-    if ($resP && $rowP = mysqli_fetch_assoc($resP)) {
-        if ($rowP['stok'] <= 0) {
-            echo "<div class='alert alert-error'>Maaf, stok produk ini sedang kosong. Silakan <a href='customer-request.php?product_id={$rowP['id']}'>ajukan permintaan barang</a>.</div>";
-            require_once 'customer-footer.php';
-            exit;
-        }
+} elseif ($productId !== '') {
+    $rowP = activeProduct($productId);
+    if ($rowP) {
         $sourceType = 'product';
-        $reqQty = max(1, min((int)($_GET['qty'] ?? 1), $rowP['stok']));
-        $checkoutItem = [
-            'request_id'   => null,
-            'product_id'   => $rowP['id'],
-            'nama_barang'  => $rowP['nama'],
-            'spesifikasi'  => $rowP['spesifikasi'],
-            'qty'          => (float)$reqQty,
-            'satuan'       => $rowP['satuan'],
-            'harga_satuan' => (float)$rowP['harga'],
-            'subtotal'     => (float)$reqQty * (float)$rowP['harga'],
-            'max_stok'     => $rowP['stok'],
-            'catatan'      => ''
-        ];
+        $items[] = ['request_id' => null, 'product_id' => $rowP['id'], 'nama_barang' => $rowP['nama'],
+                    'spesifikasi' => $rowP['spesifikasi'], 'satuan' => $rowP['satuan'], 'harga_satuan' => (float)$rowP['harga'],
+                    'qty' => (float)max(1, (int)($_GET['qty'] ?? 1)), 'qty_editable' => true];
     }
 }
 
-if (!$checkoutItem) {
-    echo "<div class='alert alert-error'>Pilihan barang tidak ditemukan. Silakan pilih produk dari <a href='customer-products.php'>Marketplace</a> atau <a href='customer-request.php'>Request yang disetujui</a>.</div>";
+if (!$items) {
+    echo "<div class='alert alert-error'>Belum ada barang untuk di-checkout. Pilih produk dari <a href='customer-products.php'>Marketplace</a>, buka <a href='customer-cart.php'>Keranjang</a>, atau pakai <a href='customer-request.php'>Request yang disetujui</a>.</div>";
     require_once 'customer-footer.php';
     exit;
 }
 
 // Handle submit order
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
-    $inputQty    = (float)($_POST['qty'] ?? $checkoutItem['qty']);
     $alamat      = trim($_POST['alamat_pengiriman'] ?? '');
     $kota        = trim($_POST['kota_pengiriman'] ?? '');
     $ekspedisi   = trim($_POST['ekspedisi'] ?? 'Ekspedisi Rekanan CV. Tidar Teknik');
     $metodeBayar = trim($_POST['metode_pembayaran'] ?? '');
     $catatan     = trim($_POST['catatan'] ?? '');
 
-    if (empty($alamat) || empty($kota) || empty($metodeBayar)) {
+    $subtotal = 0.0;
+    $qtyOk = true;
+    foreach ($items as $i => $it) {
+        if ($it['qty_editable']) {
+            $q = round((float)($_POST['qty'][$it['product_id']] ?? $it['qty']), 2);
+            if (!is_finite($q) || $q < 0.01 || $q > 100000) $qtyOk = false;
+            $items[$i]['qty'] = $q;
+        }
+        $subtotal += $items[$i]['qty'] * $items[$i]['harga_satuan'];
+    }
+
+    if (!hash_equals((string)($_SESSION['checkout_nonce'] ?? ''), (string)($_POST['order_nonce'] ?? ''))) {
+        $errorMsg = 'Formulir ini sudah diproses atau kedaluwarsa. Muat ulang halaman keranjang/produk lalu ulangi.';
+    } elseif ($alamat === '' || $kota === '' || $metodeBayar === '') {
         $errorMsg = 'Harap lengkapi alamat pengiriman, kota, dan metode pembayaran.';
-    } elseif ($inputQty <= 0) {
+    } elseif (!$qtyOk) {
         $errorMsg = 'Jumlah barang tidak valid.';
-    } elseif ($sourceType === 'product' && $inputQty > $checkoutItem['max_stok']) {
-        $errorMsg = "Jumlah melebihi stok yang tersedia ({$checkoutItem['max_stok']} {$checkoutItem['satuan']}).";
     } else {
-        // Hitung ulang total
-        $subtotal = $inputQty * $checkoutItem['harga_satuan'];
-        $ongkir = ($kota === 'SURABAYA' || $kota === 'MALANG') ? 0 : 50000;
+        $ongkir = (strtoupper($kota) === 'SURABAYA' || strtoupper($kota) === 'MALANG') ? 0 : 50000;
         $total = $subtotal + $ongkir;
+        $nomorOrder = 'ORD-' . date('Ymd') . '-' . strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 4));
+        $newOrderId = newId('ord');
 
-        $dateCode = date('Ymd');
-        $rnd = strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 4));
-        $nomorOrder = "ORD-{$dateCode}-{$rnd}";
-        $newOrderId = 'ord_' . substr(md5(uniqid(mt_rand(), true)), 0, 10);
-
-        $cleanNomor = mysqli_real_escape_string($conn, $nomorOrder);
-        $cleanAlamat= mysqli_real_escape_string($conn, $alamat);
-        $cleanKota  = mysqli_real_escape_string($conn, strtoupper($kota));
-        $cleanEksp  = mysqli_real_escape_string($conn, $ekspedisi);
-        $cleanMetode= mysqli_real_escape_string($conn, $metodeBayar);
-        $cleanCat   = mysqli_real_escape_string($conn, $catatan);
-
-        // Insert ke tabel orders
-        $insOrder = "INSERT INTO orders (id, nomor_order, customer_id, tanggal, subtotal, ongkir, total, alamat_pengiriman, kota_pengiriman, ekspedisi, metode_pembayaran, status_pembayaran, status_pesanan, catatan) 
-                     VALUES ('$newOrderId', '$cleanNomor', '$cId', CURDATE(), $subtotal, $ongkir, $total, '$cleanAlamat', '$cleanKota', '$cleanEksp', '$cleanMetode', 'menunggu_pembayaran', 'pending', '$cleanCat')";
-
-        if (mysqli_query($conn, $insOrder)) {
-            // Insert order item
-            $pIdVal = $checkoutItem['product_id'] ? "'" . mysqli_real_escape_string($conn, $checkoutItem['product_id']) . "'" : "NULL";
-            $rIdVal = $checkoutItem['request_id'] ? "'" . mysqli_real_escape_string($conn, $checkoutItem['request_id']) . "'" : "NULL";
-            $cleanBarang = mysqli_real_escape_string($conn, $checkoutItem['nama_barang']);
-            $cleanSat = mysqli_real_escape_string($conn, $checkoutItem['satuan']);
-            $cleanSpec = mysqli_real_escape_string($conn, $checkoutItem['spesifikasi'] ?? '');
-            $hargaSat = $checkoutItem['harga_satuan'];
-
-            $insItem = "INSERT INTO order_items (order_id, product_id, request_id, nama_barang, qty, satuan, harga_satuan, subtotal, spesifikasi) 
-                        VALUES ('$newOrderId', $pIdVal, $rIdVal, '$cleanBarang', $inputQty, '$cleanSat', $hargaSat, $subtotal, '$cleanSpec')";
-            mysqli_query($conn, $insItem);
-
-            // Update stok jika dari produk ready
-            if ($sourceType === 'product' && !empty($checkoutItem['product_id'])) {
-                $pid = mysqli_real_escape_string($conn, $checkoutItem['product_id']);
-                mysqli_query($conn, "UPDATE products SET stok = GREATEST(0, stok - $inputQty) WHERE id = '$pid'");
+        mysqli_begin_transaction($conn);
+        try {
+            dbRun("INSERT INTO orders (id, nomor_order, customer_id, tanggal, subtotal, ongkir, total, alamat_pengiriman, kota_pengiriman, ekspedisi, metode_pembayaran, status_pembayaran, status_pesanan, catatan)
+                   VALUES (?, ?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, ?, 'menunggu_pembayaran', 'pending', ?)",
+                [$newOrderId, $nomorOrder, $cId, $subtotal, (float)$ongkir, $total, $alamat, strtoupper($kota), $ekspedisi, $metodeBayar, $catatan]);
+            foreach ($items as $it) {
+                dbRun("INSERT INTO order_items (order_id, product_id, request_id, nama_barang, qty, satuan, harga_satuan, subtotal, spesifikasi)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [$newOrderId, $it['product_id'], $it['request_id'], $it['nama_barang'], $it['qty'], $it['satuan'],
+                     $it['harga_satuan'], $it['qty'] * $it['harga_satuan'], (string)$it['spesifikasi']]);
+                if ($it['request_id']) {
+                    // atomik: hanya satu pesanan yang bisa memakai satu request yang disetujui
+                    $st = dbRun("UPDATE product_requests SET status = 'ordered' WHERE id = ? AND customer_id = ? AND status = 'approved'", [$it['request_id'], $cId]);
+                    if (mysqli_stmt_affected_rows($st) !== 1) throw new DomainException('Request barang ini sudah diproses di pesanan lain.');
+                }
             }
-
-            // Update status request jika dari approved request
-            if ($sourceType === 'request' && !empty($checkoutItem['request_id'])) {
-                $rid = mysqli_real_escape_string($conn, $checkoutItem['request_id']);
-                mysqli_query($conn, "UPDATE product_requests SET status = 'ordered' WHERE id = '$rid'");
+            if ($sourceType === 'cart') {
+                dbRun("DELETE FROM cart_items WHERE customer_id = ?", [$cId]);
             }
+            mysqli_commit($conn);
+        } catch (Throwable $e) {
+            mysqli_rollback($conn);
+            $errorMsg = $e instanceof DomainException ? $e->getMessage() : safeError($e, 'Gagal memproses pesanan. Silakan coba lagi.');
+        }
 
-            // Redirect ke halaman detail pesanan & pembayaran
+        if ($errorMsg === '') {
+            unset($_SESSION['checkout_nonce']);
+            notify('admin', null, "Pesanan baru {$nomorOrder} dari {$currentCust['nama']} (" . count($items) . " barang, Rp " . number_format($total, 0, ',', '.') . ").", 'admin-orders.php');
             header("Location: customer-order-detail.php?id={$newOrderId}&pay=1");
             exit;
-        } else {
-            $errorMsg = 'Gagal memproses pesanan: ' . mysqli_error($conn);
         }
     }
 }
+if (empty($_SESSION['checkout_nonce'])) {
+    $_SESSION['checkout_nonce'] = bin2hex(random_bytes(16));
+}
+$subtotalAll = 0.0;
+foreach ($items as $it) $subtotalAll += $it['qty'] * $it['harga_satuan'];
 ?>
 
 <div style="margin-bottom: 20px;">
-  <a href="customer-products.php" class="btn btn-ghost" style="padding: 6px 12px; font-size: 12.5px;">
+  <a href="<?= $cartMode ? 'customer-cart.php' : 'customer-products.php' ?>" class="btn btn-ghost" style="padding: 6px 12px; font-size: 12.5px;">
     ← Kembali
   </a>
 </div>
 
 <?php if ($errorMsg): ?>
   <div class="alert alert-error" style="margin-bottom: 20px;">
-    <span>⚠️</span> <?= $errorMsg ?>
+    <span>⚠️</span> <?= h($errorMsg) ?>
   </div>
 <?php endif; ?>
 
 <form method="POST" action="" id="checkout-form">
-  <div style="display: grid; grid-template-columns: 1fr 420px; gap: 24px; align-items: start;">
+  <div class="cust-split cust-split-right wide">
     
     <!-- SISI KIRI: ALAMAT, PENGIRIMAN & METODE BAYAR -->
     <div style="display: flex; flex-direction: column; gap: 20px;">
@@ -285,53 +270,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
       </div>
       <div class="card-body" style="padding: 20px;">
         
-        <!-- ITEM PREVIEW -->
-        <div style="background: var(--navy-50); border: 1px solid var(--navy-200); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 18px;">
-          <div style="font-size: 11px; font-weight: 700; color: var(--teal-600); text-transform: uppercase;">
-            <?= $sourceType === 'request' ? '📋 Dari Request yang Disetujui' : '🛍️ Ready Stock Katalog' ?>
-          </div>
-          <div style="font-size: 14.5px; font-weight: 800; color: var(--navy-900); margin-top: 4px;">
-            <?= htmlspecialchars($checkoutItem['nama_barang']) ?>
-          </div>
-          <?php if (!empty($checkoutItem['spesifikasi'])): ?>
-            <div style="font-size: 11.5px; color: var(--navy-500); margin-top: 3px;">
-              <?= htmlspecialchars($checkoutItem['spesifikasi']) ?>
-            </div>
+        <!-- ITEM PREVIEW (satu atau banyak barang) -->
+        <input type="hidden" name="cart" value="<?= $cartMode ? '1' : '' ?>">
+        <input type="hidden" name="order_nonce" value="<?= h($_SESSION['checkout_nonce']) ?>">
+        <div style="font-size: 11px; font-weight: 700; color: var(--teal-600); text-transform: uppercase; margin-bottom: 6px;">
+          <?= $sourceType === 'request' ? '📋 Dari Request yang Disetujui' : ($sourceType === 'cart' ? '🛒 Dari Keranjang (' . count($items) . ' barang)' : '🛍️ Produk Katalog') ?>
+        </div>
+        <?php foreach ($items as $it): ?>
+        <div style="background: var(--navy-50); border: 1px solid var(--navy-200); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 10px;">
+          <div style="font-size: 14.5px; font-weight: 800; color: var(--navy-900);"><?= h($it['nama_barang']) ?></div>
+          <?php if (!empty($it['spesifikasi'])): ?>
+            <div style="font-size: 11.5px; color: var(--navy-500); margin-top: 3px;"><?= h($it['spesifikasi']) ?></div>
           <?php endif; ?>
-
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; border-top: 1px dashed var(--navy-200); padding-top: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px dashed var(--navy-200); padding-top: 10px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <label for="input-qty" style="font-size: 12px; margin: 0; text-transform: none;">Jumlah:</label>
-              <?php if ($sourceType === 'product'): ?>
-                <input 
-                  type="number" 
-                  name="qty" 
-                  id="input-qty" 
-                  value="<?= $checkoutItem['qty'] ?>" 
-                  min="1" 
-                  max="<?= $checkoutItem['max_stok'] ?>" 
-                  class="form-control" 
-                  style="width: 70px; padding: 4px 8px; font-weight: 700; text-align: center;"
-                  onchange="recalcTotals()"
-                >
+              <span style="font-size: 12px;">Jumlah:</span>
+              <?php if ($it['qty_editable']): ?>
+                <input type="number" name="qty[<?= h($it['product_id']) ?>]" value="<?= h($it['qty']) ?>" min="1" step="1" data-price="<?= h($it['harga_satuan']) ?>"
+                       class="form-control item-qty" style="width: 70px; padding: 4px 8px; font-weight: 700; text-align: center;" onchange="recalcTotals()">
               <?php else: ?>
-                <strong><?= $checkoutItem['qty'] ?></strong>
-                <input type="hidden" name="qty" id="input-qty" value="<?= $checkoutItem['qty'] ?>">
+                <strong><?= h($it['qty']) ?></strong>
+                <span class="item-fixed" data-subtotal="<?= h($it['qty'] * $it['harga_satuan']) ?>"></span>
               <?php endif; ?>
-              <span style="font-size: 12px; color: var(--navy-600);"><?= htmlspecialchars($checkoutItem['satuan']) ?></span>
+              <span style="font-size: 12px; color: var(--navy-600);"><?= h($it['satuan']) ?></span>
             </div>
-
-            <div style="text-align: right;">
-              <span style="font-size: 11px; color: var(--navy-400);">@ Rp <?= number_format($checkoutItem['harga_satuan'], 0, ',', '.') ?></span>
-            </div>
+            <span style="font-size: 11px; color: var(--navy-400);">@ Rp <?= number_format($it['harga_satuan'], 0, ',', '.') ?></span>
           </div>
         </div>
+        <?php endforeach; ?>
+        <div style="margin-bottom: 8px;"></div>
 
         <!-- KALKULASI HARGA -->
         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--navy-700); margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between;">
             <span>Subtotal Produk:</span>
-            <strong id="label-subtotal">Rp <?= number_format($checkoutItem['subtotal'], 0, ',', '.') ?></strong>
+            <strong id="label-subtotal">Rp <?= number_format($subtotalAll, 0, ',', '.') ?></strong>
           </div>
           <div style="display: flex; justify-content: space-between;">
             <span>Estimasi Ongkos Kirim:</span>
@@ -340,7 +313,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
           <div style="border-top: 1.5px solid var(--navy-200); margin-top: 6px; padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 14px; font-weight: 700; color: var(--navy-900);">Total Pembayaran:</span>
             <span style="font-size: 20px; font-weight: 800; color: var(--teal-600);" id="label-total">
-              Rp <?= number_format($checkoutItem['subtotal'], 0, ',', '.') ?>
+              Rp <?= number_format($subtotalAll, 0, ',', '.') ?>
             </span>
           </div>
         </div>
@@ -359,18 +332,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
 </form>
 
 <script>
-  const unitPrice = <?= $checkoutItem['harga_satuan'] ?>;
-
   function recalcTotals() {
-    const qtyInput = document.getElementById('input-qty');
     const kotaInput = document.getElementById('kota_pengiriman');
-    const qty = parseFloat(qtyInput ? qtyInput.value : 1) || 1;
     const kota = (kotaInput ? kotaInput.value : '').toUpperCase().trim();
 
-    const subtotal = qty * unitPrice;
+    let subtotal = 0;
+    document.querySelectorAll('.item-qty').forEach(el => {
+      subtotal += (parseFloat(el.value) || 0) * (parseFloat(el.dataset.price) || 0);
+    });
+    document.querySelectorAll('.item-fixed').forEach(el => { subtotal += parseFloat(el.dataset.subtotal) || 0; });
+
     let ongkir = 0;
     if (kota === 'SURABAYA' || kota === 'MALANG' || kota === '') {
-      ongkir = 0;
       document.getElementById('label-ongkir').textContent = 'Gratis (Malang/Surabaya)';
       document.getElementById('label-ongkir').style.color = 'var(--em-600)';
     } else {
@@ -379,10 +352,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
       document.getElementById('label-ongkir').style.color = 'var(--navy-700)';
     }
 
-    const grandTotal = subtotal + ongkir;
     document.getElementById('label-subtotal').textContent = 'Rp ' + subtotal.toLocaleString('id-ID');
-    document.getElementById('label-total').textContent = 'Rp ' + grandTotal.toLocaleString('id-ID');
+    document.getElementById('label-total').textContent = 'Rp ' + (subtotal + ongkir).toLocaleString('id-ID');
   }
+  recalcTotals();
 </script>
 
 <?php require_once 'customer-footer.php'; ?>

@@ -16,7 +16,7 @@ $errorPass      = '';
 
 // 1. Handle Update Profil
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_profile'])) {
-    $nama    = trim($_POST['nama'] ?? '');
+    $nama    = (string)$currentCust['nama']; // nama hanya bisa diubah admin (dipakai sebagai kunci dokumen)
     $pic     = trim($_POST['pic'] ?? '');
     $telepon = trim($_POST['telepon'] ?? '');
     $kota    = trim($_POST['kota'] ?? '');
@@ -26,28 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_profile'])) {
     if (empty($nama) || empty($telepon) || empty($kota)) {
         $errorProfile = 'Nama, nomor telepon, dan kota wajib diisi.';
     } else {
-        $cleanNama = mysqli_real_escape_string($conn, $nama);
-        $cleanPic  = mysqli_real_escape_string($conn, $pic);
-        $cleanTelp = mysqli_real_escape_string($conn, $telepon);
-        $cleanKota = mysqli_real_escape_string($conn, strtoupper($kota));
-        $cleanAlm  = mysqli_real_escape_string($conn, $alamat);
-        $cleanNpwp = mysqli_real_escape_string($conn, $npwp);
-
-        $sql = "UPDATE customers SET 
-                    nama = '$cleanNama',
-                    pic = '$cleanPic',
-                    telepon = '$cleanTelp',
-                    kota = '$cleanKota',
-                    alamat = '$cleanAlm',
-                    npwp = '$cleanNpwp'
-                WHERE id = '$cId'";
-
-        if (mysqli_query($conn, $sql)) {
+        try {
+            dbRun("UPDATE customers SET nama = ?, pic = ?, telepon = ?, kota = ?, alamat = ?, npwp = ? WHERE id = ?",
+                [$nama, $pic, $telepon, strtoupper($kota), $alamat, $npwp, $cId]);
             $successProfile = 'Data profil berhasil diperbarui.';
-            $_SESSION[CUSTOMER_NAME_KEY] = $cleanNama;
+            $_SESSION[CUSTOMER_NAME_KEY] = $nama;
             $currentCust = getCurrentCustomer(); // refresh
-        } else {
-            $errorProfile = 'Gagal memperbarui profil: ' . mysqli_error($conn);
+        } catch (Throwable $e) {
+            $errorProfile = 'Gagal memperbarui profil. Coba lagi.';
         }
     }
 }
@@ -59,8 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_password'])) {
     $passConf = $_POST['pass_conf'] ?? '';
 
     // Ambil password saat ini dari DB
-    $resP = mysqli_query($conn, "SELECT password FROM customers WHERE id = '$cId' LIMIT 1");
-    $rowP = mysqli_fetch_assoc($resP);
+    $rowP = dbRow("SELECT password FROM customers WHERE id = ? LIMIT 1", [$cId]);
 
     if (empty($passLama) || empty($passBaru) || empty($passConf)) {
         $errorPass = 'Harap isi semua kolom password.';
@@ -72,10 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_password'])) {
         $errorPass = 'Konfirmasi password baru tidak cocok.';
     } else {
         $hashed = password_hash($passBaru, PASSWORD_BCRYPT);
-        if (mysqli_query($conn, "UPDATE customers SET password = '$hashed' WHERE id = '$cId'")) {
-            $successPass = 'Password akun berhasil diubah.';
-        } else {
-            $errorPass = 'Gagal mengubah password: ' . mysqli_error($conn);
+        dbRun("UPDATE customers SET password = ?, must_change_password = 0 WHERE id = ?", [$hashed, $cId]);
+        session_regenerate_id(true);
+        $successPass = 'Password akun berhasil diubah.';
+        if (isset($_GET['force'])) {
+            header('Location: customer-dashboard.php');
+            exit;
         }
     }
 }
@@ -83,6 +70,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_password'])) {
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
   
+  <?php if (isset($_GET['force']) || !empty($currentCust['must_change_password'])): ?>
+    <div class="alert alert-error" style="margin-bottom:16px"><span>🔐</span> Demi keamanan, ganti password sementara Anda terlebih dahulu sebelum memakai portal.</div>
+  <?php endif; ?>
+
   <!-- FORM DATA PERUSAHAAN & KONTAK -->
   <div class="card">
     <div class="card-header">
@@ -108,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_password'])) {
 
         <div class="form-group">
           <label class="form-label required">Nama Perusahaan / Pribadi</label>
-          <input type="text" name="nama" class="form-control" value="<?= htmlspecialchars($currentCust['nama']) ?>" required>
+          <input type="text" name="nama" class="form-control" value="<?= htmlspecialchars($currentCust['nama']) ?>" readonly style="background:var(--navy-50)" title="Nama perusahaan diubah oleh admin">
         </div>
 
         <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -170,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_password'])) {
         </div>
       <?php endif; ?>
 
-      <form method="POST" action="customer-profile.php" autocomplete="off">
+      <form method="POST" action="customer-profile.php<?= isset($_GET['force']) ? '?force=1' : '' ?>" autocomplete="off">
         <input type="hidden" name="action_password" value="1">
 
         <div class="form-group">

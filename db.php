@@ -3,10 +3,18 @@
  * Database configuration and connection
  */
 
-$host = 'localhost';
-$user = 'root';
-$pass = '';
-$db   = 'ppsi_tidarteknik';
+/** Nilai konfigurasi dari config.php (dengan default). */
+function appConfig(string $key, $default = null) {
+    static $c = null;
+    if ($c === null) $c = is_file(__DIR__ . '/config.php') ? (require __DIR__ . '/config.php') : [];
+    return $c[$key] ?? $default;
+}
+
+$cfg  = is_file(__DIR__ . '/config.php') ? (require __DIR__ . '/config.php') : [];
+$host = $cfg['db_host'] ?? 'localhost';
+$user = $cfg['db_user'] ?? 'root';
+$pass = $cfg['db_pass'] ?? '';
+$db   = $cfg['db_name'] ?? 'ppsi_tidarteknik';
 
 $conn = mysqli_connect($host, $user, $pass);
 
@@ -227,4 +235,7 @@ foreach ($tables as $sql) {
         die("Error creating table: " . mysqli_error($conn));
     }
 }
+
+require_once __DIR__ . '/schema_pmp.php';
+ensurePmpSchema($conn);
 ?>

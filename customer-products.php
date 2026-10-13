@@ -11,59 +11,44 @@ require_once 'customer-header.php';
 // Parameter pencarian & filter
 $search   = trim($_GET['q'] ?? '');
 $kategori = trim($_GET['kategori'] ?? '');
-$stokFilt = trim($_GET['stok'] ?? '');
-$viewTab  = trim($_GET['tab'] ?? 'all'); // 'all' atau 'wishlist'
+$viewTab  =trim($_GET['tab'] ?? 'all'); // 'all' atau 'wishlist'
 
 // Ambil daftar wishlist customer
-$wishlistIds = [];
-$wRes = mysqli_query($conn, "SELECT product_id FROM customer_wishlist WHERE customer_id = '{$currentCust['id']}'");
-while ($wRow = mysqli_fetch_assoc($wRes)) {
-    $wishlistIds[] = $wRow['product_id'];
-}
+$wishlistIds = array_column(dbRows("SELECT product_id FROM customer_wishlist WHERE customer_id = ?", [$currentCust['id']]), 'product_id');
 
 // Ambil list semua kategori yang ada di DB
-$catRes = mysqli_query($conn, "SELECT DISTINCT kategori FROM products WHERE is_active = 1 ORDER BY kategori ASC");
-$categories = [];
-while ($cRow = mysqli_fetch_assoc($catRes)) {
-    $categories[] = $cRow['kategori'];
-}
+$categories = array_column(dbRows("SELECT DISTINCT kategori FROM products WHERE is_active = 1 ORDER BY kategori ASC"), 'kategori');
 
 // Bangun query filter produk
 $where = ["p.is_active = 1"];
+$params = [];
 
 if (!empty($search)) {
-    $s = mysqli_real_escape_string($conn, $search);
-    $where[] = "(p.nama LIKE '%$s%' OR p.kode LIKE '%$s%' OR p.spesifikasi LIKE '%$s%' OR s.nama LIKE '%$s%')";
+    $like = '%' . $search . '%';
+    $where[] = "(p.nama LIKE ? OR p.kode LIKE ? OR p.spesifikasi LIKE ? OR s.nama LIKE ?)";
+    array_push($params, $like, $like, $like, $like);
 }
 
 if (!empty($kategori)) {
-    $k = mysqli_real_escape_string($conn, $kategori);
-    $where[] = "p.kategori = '$k'";
-}
-
-if ($stokFilt === 'ready') {
-    $where[] = "p.stok > 0";
-} elseif ($stokFilt === 'empty') {
-    $where[] = "p.stok = 0";
+    $where[] = "p.kategori = ?";
+    $params[] = $kategori;
 }
 
 if ($viewTab === 'wishlist') {
     if (empty($wishlistIds)) {
         $where[] = "1 = 0"; // kosongkan hasil jika belum ada wishlist
     } else {
-        $inWish = "'" . implode("','", array_map(function($id) use ($conn) { return mysqli_real_escape_string($conn, $id); }, $wishlistIds)) . "'";
-        $where[] = "p.id IN ($inWish)";
+        $where[] = "p.id IN (" . implode(',', array_fill(0, count($wishlistIds), '?')) . ")";
+        $params = array_merge($params, $wishlistIds);
     }
 }
 
 $whereSql = implode(" AND ", $where);
-$query = "SELECT p.*, s.nama AS nama_supplier 
-          FROM products p 
-          LEFT JOIN suppliers s ON p.supplier_id = s.id 
-          WHERE $whereSql 
-          ORDER BY p.stok DESC, p.created_at DESC";
-$resProds = mysqli_query($conn, $query);
-$products = mysqli_fetch_all($resProds, MYSQLI_ASSOC);
+$products = dbRows("SELECT p.*, s.nama AS nama_supplier
+                    FROM products p
+                    LEFT JOIN suppliers s ON p.supplier_id = s.id
+                    WHERE $whereSql
+                    ORDER BY p.created_at DESC", $params);
 
 // Helper icon kategori
 function getCategoryIcon($cat) {
@@ -82,7 +67,7 @@ function getCategoryIcon($cat) {
     <div style="font-size: 11px; font-weight: 700; color: var(--teal-400); text-transform: uppercase; letter-spacing: .06em;">Katalog Suplai Industri</div>
     <h2 style="font-size: 20px; font-weight: 800; margin: 4px 0 8px 0;">Butuh Barang Khusus di Luar Katalog?</h2>
     <p style="font-size: 13px; color: var(--navy-300); margin: 0; max-width: 620px;">
-      CV. Tidar Teknik melayani pengadaan sistem dropship berbagai komponen teknik &amp; industri. Jika barang yang Anda cari tidak tersedia di stok, Anda dapat mengajukan permintaan ketersediaan dan penawaran harga kepada admin.
+      CV. Tidar Teknik melayani pengadaan sistem dropship berbagai komponen teknik &amp; industri. Jika barang yang Anda cari tidak ada di katalog, Anda dapat mengajukan permintaan ketersediaan dan penawaran harga kepada admin.
     </p>
   </div>
   <a href="customer-request.php?new=1" class="btn btn-primary" style="padding: 12px 20px; font-weight: 700; box-shadow: 0 4px 16px rgba(14,165,233,.4);">
@@ -129,17 +114,8 @@ function getCategoryIcon($cat) {
         </select>
       </div>
 
-      <!-- Stok Filter -->
-      <div style="min-width: 150px;">
-        <select name="stok" class="form-control" onchange="this.form.submit()">
-          <option value="">Semua Stok</option>
-          <option value="ready" <?= $stokFilt === 'ready' ? 'selected' : '' ?>>Ready Stock (>0)</option>
-          <option value="empty" <?= $stokFilt === 'empty' ? 'selected' : '' ?>>Stok Kosong (0)</option>
-        </select>
-      </div>
-
       <button type="submit" class="btn btn-primary">Filter</button>
-      <?php if (!empty($search) || !empty($kategori) || !empty($stokFilt) || $viewTab === 'wishlist'): ?>
+      <?php if (!empty($search) || !empty($kategori) || $viewTab === 'wishlist'): ?>
         <a href="customer-products.php" class="btn btn-ghost" title="Reset filter">↺ Reset</a>
       <?php endif; ?>
     </form>
@@ -169,7 +145,6 @@ function getCategoryIcon($cat) {
   <div class="product-grid">
     <?php foreach ($products as $p): 
       $isWish = in_array($p['id'], $wishlistIds);
-      $isReady = $p['stok'] > 0;
     ?>
       <div class="product-card">
         <!-- Thumbnail -->
@@ -184,22 +159,12 @@ function getCategoryIcon($cat) {
           <button 
             type="button" 
             class="wishlist-btn-corner <?= $isWish ? 'active' : '' ?>" 
-            onclick="toggleWishlist(this, '<?= $p['id'] ?>')"
+            onclick="toggleWishlist(this, '<?= h($p['id']) ?>')"
             title="<?= $isWish ? 'Hapus dari Wishlist' : 'Simpan ke Wishlist' ?>"
           >
             <?= $isWish ? '❤️' : '🤍' ?>
           </button>
 
-          <!-- Stock badge -->
-          <?php if ($isReady): ?>
-            <span class="stock-tag stock-available">
-              Ready (<?= $p['stok'] ?> <?= htmlspecialchars($p['satuan']) ?>)
-            </span>
-          <?php else: ?>
-            <span class="stock-tag stock-empty">
-              ⚠️ Stok Kosong
-            </span>
-          <?php endif; ?>
         </div>
 
         <!-- Body -->
@@ -217,7 +182,7 @@ function getCategoryIcon($cat) {
             <div>
               <div style="font-size: 10.5px; color: var(--navy-400); text-transform: uppercase;">Harga Estimasi</div>
               <div class="product-price">
-                Rp <?= number_format($p['harga'], 0, ',', '.') ?>
+                <?= h(hargaLabel($p)) ?>
               </div>
             </div>
             <span class="product-unit">/ <?= htmlspecialchars($p['satuan']) ?></span>
@@ -229,17 +194,10 @@ function getCategoryIcon($cat) {
               Detail
             </a>
 
-            <?php if ($isReady): ?>
-              <!-- FASE 2: Jika stok tersedia, tombol Beli Langsung (Checkout) -->
-              <a href="customer-checkout.php?product_id=<?= urlencode($p['id']) ?>" class="btn btn-success" title="Beli langsung barang ready">
-                🛒 Beli
-              </a>
-            <?php else: ?>
-              <!-- FASE 1: Tombol Ajukan Permintaan Barang HANYA muncul jika stok = 0 -->
-              <a href="customer-request.php?product_id=<?= urlencode($p['id']) ?>" class="btn btn-warning" title="Ajukan ketersediaan & harga ke admin">
-                📋 Request Barang
-              </a>
-            <?php endif; ?>
+            <!-- Order multi-produk lewat keranjang (stok tidak ditampilkan; ketersediaan dicek admin ke supplier) -->
+            <button type="button" class="btn btn-success" title="Masukkan ke keranjang" onclick="addToCart('<?= h($p['id']) ?>')">
+              🛒 Keranjang
+            </button>
           </div>
         </div>
       </div>

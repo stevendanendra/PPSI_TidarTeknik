@@ -2,6 +2,31 @@
  * app.js — Shared utilities for CV. Tidar Teknik
  */
 
+// ===== KEAMANAN =====
+// Semua fetch non-GET otomatis membawa token CSRF (dari <meta name="csrf-token"> yang disisipkan server).
+(function () {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  const token = meta ? meta.content : '';
+  const nativeFetch = window.fetch;
+  window.fetch = function (input, init) {
+    init = init || {};
+    const method = String(init.method || (input && input.method) || 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD' && token) {
+      const headers = new Headers(init.headers || (input && input.headers) || {});
+      headers.set('X-CSRF-Token', token);
+      init.headers = headers;
+    }
+    return nativeFetch.call(this, input, init);
+  };
+})();
+
+/** Escape teks sebelum disisipkan ke HTML (innerHTML / atribut) agar data pengguna tidak dieksekusi. */
+function esc(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // ===== FORMAT HELPERS =====
 const fmt = {
   /** Format number as Rupiah e.g. Rp 4.000.000 */
@@ -143,7 +168,9 @@ const dbStore = {
       [KEYS.PENAWARAN_LIST]: 'save_penawaran',
       [KEYS.LEDGER]: 'save_ledger'
     };
-    const res = await fetch(`api.php?action=${actionMap[key]}`, {
+    // Daftar kosong hanya boleh menghapus semua data bila dikirim eksplisit (mis. menghapus item terakhir).
+    const allowEmpty = Array.isArray(val) && val.length === 0 ? '&allow_empty=1' : '';
+    const res = await fetch(`api.php?action=${actionMap[key]}${allowEmpty}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(val)
@@ -418,7 +445,7 @@ function showToast(msg, type = 'info') {
   const toast = document.createElement('div');
   const icons = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️' };
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
+  toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${esc(msg)}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.style.animation = 'toastIn .2s ease reverse';
@@ -454,8 +481,8 @@ function setupAutocomplete(inputEl, listEl, getDataFn, onSelect) {
     listEl.style.display = 'block';
     listEl.innerHTML = items.map((d, i) =>
       `<div class="autocomplete-item" data-idx="${i}">
-        <strong>${d.nama}</strong>
-        <div class="ac-sub">${d.kode ? '[' + d.kode + ']' : ''} ${d.kota || ''}</div>
+        <strong>${esc(d.nama)}</strong>
+        <div class="ac-sub">${d.kode ? '[' + d.kode + ']' : ''} ${esc(d.kota || '')}</div>
       </div>`
     ).join('');
     listEl.querySelectorAll('.autocomplete-item').forEach((el, i) => {
@@ -615,6 +642,50 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', () => {
     if (window.innerWidth > 768) closeSidebar();
   });
+});
+
+// Menu admin tambahan (Akun Customer, Retur) + lonceng notifikasi internal
+document.addEventListener('DOMContentLoaded', () => {
+  const anchor = document.querySelector('.sidebar a[href="admin-products.php"]');
+  if (anchor && !document.querySelector('a[href="admin-customers.php"]')) {
+    const here = location.pathname.split('/').pop();
+    const mk = (href, icon, label) => {
+      const a = document.createElement('a');
+      a.href = href;
+      a.className = 'nav-item' + (here === href ? ' active' : '');
+      a.innerHTML = `<span class="nav-icon">${icon}</span> ${label}`;
+      return a;
+    };
+    anchor.after(mk('admin-customers.php', '🔑', 'Akun Customer'), mk('admin-returns.php', '↩️', 'Retur Barang'));
+  }
+
+  const actions = document.querySelector('.topbar-actions');
+  if (!actions || document.getElementById('notif-bell') || document.querySelector('.badge-portal')) return;
+  const wrap = document.createElement('div');
+  wrap.style.position = 'relative';
+  wrap.innerHTML = `<button type="button" class="btn btn-ghost" id="notif-bell" style="font-size:16px;padding:6px 10px" aria-label="Notifikasi">🔔<span id="notif-count" class="nav-badge" style="display:none;position:absolute;top:-4px;right:-4px">0</span></button>
+    <div id="notif-panel" class="card" style="display:none;position:absolute;right:0;top:44px;width:340px;max-width:85vw;z-index:50;padding:0;max-height:360px;overflow:auto"></div>`;
+  actions.prepend(wrap);
+  const countEl = wrap.querySelector('#notif-count'), panel = wrap.querySelector('#notif-panel');
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  async function load() {
+    try {
+      const res = await fetch('api.php?action=get_notifications&_t=' + Date.now());
+      const d = await res.json();
+      if (d.status !== 'success') return;
+      countEl.style.display = d.unread > 0 ? 'inline-block' : 'none';
+      countEl.textContent = d.unread;
+      panel.innerHTML = d.items.length
+        ? d.items.map(n => `<a href="${esc(n.link || '#')}" style="display:block;padding:10px 14px;border-bottom:1px solid var(--navy-200);font-size:12.5px;text-decoration:none;color:var(--navy-800);${n.is_read == 0 ? 'background:rgba(14,165,233,.08);font-weight:600' : ''}">${esc(n.pesan)}<br><small style="color:var(--navy-400)">${esc(n.created_at)}</small></a>`).join('')
+        : '<div style="padding:14px;font-size:12.5px;color:var(--navy-400)">Belum ada notifikasi.</div>';
+    } catch (e) {}
+  }
+  wrap.querySelector('#notif-bell').addEventListener('click', async () => {
+    const open = panel.style.display === 'block';
+    panel.style.display = open ? 'none' : 'block';
+    if (!open) { await fetch('api.php?action=read_notifications', { method: 'POST' }); setTimeout(load, 300); }
+  });
+  load(); setInterval(load, 15000);
 });
 
 // init on load

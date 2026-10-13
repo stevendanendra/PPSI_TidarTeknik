@@ -7,6 +7,7 @@
 require_once 'customer-auth.php';
 requireCustomerLogin();
 
+$currentCust = getCurrentCustomer();
 $cId = $currentCust['id'];
 $orderId = trim($_GET['id'] ?? '');
 
@@ -14,21 +15,17 @@ if (empty($orderId)) {
     die("ID Pesanan tidak ditemukan.");
 }
 
-$cleanOId = mysqli_real_escape_string($conn, $orderId);
-$resO = mysqli_query($conn, "SELECT o.*, c.nama AS nama_customer, c.telepon AS telp_customer, c.email AS email_customer, c.npwp AS npwp_customer 
-                            FROM orders o 
-                            JOIN customers c ON o.customer_id = c.id 
-                            WHERE o.id = '$cleanOId' AND o.customer_id = '$cId' LIMIT 1");
+$order = dbRow("SELECT o.*, c.nama AS nama_customer, c.telepon AS telp_customer, c.email AS email_customer, c.npwp AS npwp_customer
+                FROM orders o
+                JOIN customers c ON o.customer_id = c.id
+                WHERE o.id = ? AND o.customer_id = ? LIMIT 1", [$orderId, $cId]);
 
-if (!$resO || mysqli_num_rows($resO) == 0) {
+if (!$order) {
     die("Pesanan tidak ditemukan atau Anda tidak memiliki akses.");
 }
 
-$order = mysqli_fetch_assoc($resO);
-
 // Ambil items
-$resI = mysqli_query($conn, "SELECT * FROM order_items WHERE order_id = '$cleanOId'");
-$items = mysqli_fetch_all($resI, MYSQLI_ASSOC);
+$items = dbRows("SELECT * FROM order_items WHERE order_id = ?", [$orderId]);
 
 // Helper terbilang PHP
 function terbilangIndo($n) {

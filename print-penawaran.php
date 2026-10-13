@@ -1,4 +1,8 @@
-<?php include 'db.php'; ?>
+<?php
+require_once 'auth.php';
+requireLogin();
+include 'db.php';
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -33,7 +37,7 @@
   </div>
 </div>
 
-<script src="js/app.js?v=1.1"></script>
+<script src="js/app.js?v=<?= time() ?>"></script>
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
@@ -66,9 +70,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         <table style="width: 100%; border: none; font-size: 8.2pt; line-height: 1.4; border-collapse: collapse;">
           ${parts.map(p => `
             <tr>
-              <td style="padding: 1px 0; color: #64748b; width: 70px; border: none;">${p[0]}</td>
+              <td style="padding: 1px 0; color: #64748b; width: 70px; border: none;">${esc(p[0])}</td>
               <td style="padding: 1px 4px; color: #64748b; width: 8px; border: none;">:</td>
-              <td style="padding: 1px 0; color: #1e293b; font-weight: 500; border: none;">${p[1]}</td>
+              <td style="padding: 1px 0; color: #1e293b; font-weight: 500; border: none;">${esc(p[1])}</td>
             </tr>
           `).join('')}
         </table>
@@ -79,14 +83,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       <td class="td-desc" style="text-align: left; vertical-align: top; padding: 10px 12px;">
         <div style="display: flex; gap: 10px; align-items: flex-start; text-align: left;">
           <div style="flex: 1; text-align: left;">
-            <div style="color: #0f172a; margin-bottom: 4px; font-size: 10pt; line-height: 1.3;">${item.desc||''}</div>
-            ${item.note_item ? `<div style="font-size: 8.5pt; color: #64748b; font-weight: normal; margin-top: 6px; padding-top: 4px; border-top: 1px dashed #f1f5f9;">Note: ${item.note_item}</div>` : ''}
+            <div style="color: #0f172a; margin-bottom: 4px; font-size: 10pt; line-height: 1.3;">${esc(item.desc||'')}</div>
+            ${item.note_item ? `<div style="font-size: 8.5pt; color: #64748b; font-weight: normal; margin-top: 6px; padding-top: 4px; border-top: 1px dashed #f1f5f9;">Note: ${esc(item.note_item)}</div>` : ''}
           </div>
           ${specHtml}
         </div>
       </td>
       <td class="td-qty text-center" style="vertical-align: top; padding-top: 12px;">${Math.floor(item.qty)||0}</td>
-      <td class="text-center" style="vertical-align: top; padding-top: 12px;">${item.satuan||''}</td>
+      <td class="text-center" style="vertical-align: top; padding-top: 12px;">${esc(item.satuan||'')}</td>
       <td class="td-price text-right" style="vertical-align: top; padding-top: 12px;">${item.price ? (parseFloat(item.price)||0).toLocaleString('id-ID') : ''}</td>
       <td class="td-amount text-right amount-cell" style="vertical-align: top; padding-top: 12px;">${item.amount ? (parseFloat(item.amount)||0).toLocaleString('id-ID') : ''}</td>
     </tr>`;
@@ -119,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <tr>
           <td style="width:70px">Nomor</td>
           <td style="width:10px">:</td>
-          <td><strong>${p.nomor}</strong></td>
+          <td><strong>${esc(p.nomor)}</strong></td>
         </tr>
         <tr>
           <td>Perihal</td>
@@ -130,9 +134,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       <div style="margin-top:20px">
         Kepada Yth,<br>
-        <strong>${p.customer||''}</strong><br>
-        ${p.kota ? `${p.kota}<br>` : ''}
-        ${p.att ? `ATT: <strong>${p.att}</strong><br>` : ''}
+        <strong>${esc(p.customer||'')}</strong><br>
+        ${p.kota ? `${esc(p.kota)}<br>` : ''}
+        ${p.att ? `ATT: <strong>${esc(p.att)}</strong><br>` : ''}
       </div>
     </div>
 
@@ -143,7 +147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       Kami ingin mengirim daftar barang yang kami tawarkan meliputi,
     </div>
 
-    ${p.sub_judul ? `<div class="sub-judul-box">${p.sub_judul}</div>` : ''}
+    ${p.sub_judul ? `<div class="sub-judul-box">${esc(p.sub_judul)}</div>` : ''}
 
     <!-- ITEMS TABLE -->
     <table class="items-table" style="margin-bottom:10px">
@@ -203,7 +207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     ${p.ppnMode === 'include' ? '<div style="font-size: 8.5pt; color: #475569; font-style: italic; margin-bottom: 15px;">*) Harga sudah termasuk PPN 11%</div>' : ''}
 
-    ${p.note ? `<div class="notes-box">Notes:<br>${p.note}</div>` : ''}
+    ${p.note ? `<div class="notes-box">Notes:<br>${esc(p.note)}</div>` : ''}
 
     <div class="letter-content" style="margin-top:30px">
       Demikian Penawaran Harga kami sampaikan, sambil menunggu kabar selanjutnya dari Bapak / Ibu, atas perhatiannya kami ucapkan terima kasih.

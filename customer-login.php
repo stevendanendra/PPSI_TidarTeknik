@@ -4,11 +4,9 @@
  * CV. Tidar Teknik
  */
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 require_once 'customer-auth.php';
+require_once 'lib.php';
 
 // Jika customer sudah login, redirect langsung ke dashboard customer
 if (isCustomerLoggedIn()) {
@@ -18,6 +16,7 @@ if (isCustomerLoggedIn()) {
 
 $error   = '';
 $success = '';
+$allowRegister = (bool)appConfig('allow_customer_register', false);
 
 if (isset($_GET['registered']) && $_GET['registered'] == '1') {
     $success = 'Pendaftaran berhasil! Silakan masuk dengan email dan password Anda.';
@@ -33,31 +32,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($email) || empty($password)) {
         $error = 'Harap isi email dan password.';
+    } elseif (throttleBlocked('customer', $email)) {
+        $error = 'Terlalu banyak percobaan login. Coba lagi dalam 15 menit.';
     } else {
-        $cleanEmail = mysqli_real_escape_string($conn, $email);
-        $query = "SELECT * FROM customers WHERE email = '$cleanEmail' LIMIT 1";
-        $res = mysqli_query($conn, $query);
+        $cust = dbRow("SELECT * FROM customers WHERE email = ? LIMIT 1", [$email]);
+        $okPass = $cust && !empty($cust['password']) && password_verify($password, $cust['password']);
 
-        if ($res && $cust = mysqli_fetch_assoc($res)) {
-            if ($cust['status'] !== 'active') {
-                $error = 'Akun Anda sedang dinonaktifkan. Silakan hubungi admin CV. Tidar Teknik.';
-            } elseif (!empty($cust['password']) && password_verify($password, $cust['password'])) {
-                // Login sukses
-                $_SESSION[CUSTOMER_SESSION_KEY]   = true;
-                $_SESSION[CUSTOMER_ID_KEY]        = $cust['id'];
-                $_SESSION[CUSTOMER_NAME_KEY]      = $cust['nama'];
-                $_SESSION[CUSTOMER_EMAIL_KEY]     = $cust['email'];
-                $_SESSION['customer_auth_time']   = time();
+        if ($okPass && $cust['status'] !== 'active') {
+            $error = 'Akun Anda sedang dinonaktifkan. Silakan hubungi admin CV. Tidar Teknik.';
+        } elseif ($okPass) {
+            throttleClear('customer', $email);
+            session_regenerate_id(true); // cegah session fixation
+            $_SESSION[CUSTOMER_SESSION_KEY]   = true;
+            $_SESSION[CUSTOMER_ID_KEY]        = $cust['id'];
+            $_SESSION[CUSTOMER_NAME_KEY]      = $cust['nama'];
+            $_SESSION[CUSTOMER_EMAIL_KEY]     = $cust['email'];
+            $_SESSION['customer_auth_time']   = time();
 
-                $redirect = $_SESSION['customer_redirect'] ?? 'customer-dashboard.php';
-                unset($_SESSION['customer_redirect']);
-                header('Location: ' . $redirect);
-                exit;
-            } else {
-                $error = 'Password yang Anda masukkan salah.';
-            }
+            $redirect = $_SESSION['customer_redirect'] ?? 'customer-dashboard.php';
+            unset($_SESSION['customer_redirect']);
+            header('Location: ' . $redirect);
+            exit;
         } else {
-            $error = 'Email tidak ditemukan. Pastikan email terdaftar atau silakan buat akun baru.';
+            throttleHit('customer', $email);
+            // Pesan seragam: tidak membocorkan apakah email terdaftar
+            $error = 'Email atau password salah.';
         }
     }
 }
@@ -80,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       --navy-800: #1e293b;
       --navy-700: #334155;
       --navy-500: #64748b;
+      --navy-400: #94a3b8;
       --navy-300: #cbd5e1;
       --navy-200: #e2e8f0;
       --navy-100: #f1f5f9;
@@ -258,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       transition: all .2s;
     }
     input[type="email"]::placeholder,
-    input[type="password"]::placeholder { color: var(--navy-500); }
+    input[type="password"]::placeholder { color: #94a3b8; }
     input[type="email"]:focus,
     input[type="password"]:focus {
       border-color: var(--teal-400);
@@ -296,7 +296,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .btn-submit {
       width: 100%;
       padding: 13px;
-      background: linear-gradient(135deg, var(--teal-600), var(--emerald-600));
+      background: linear-gradient(135deg, #0369a1, #047857);
       border: none;
       border-radius: 10px;
       color: #fff;
@@ -378,7 +378,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Switcher Tab -->
     <div class="nav-tabs-portal">
       <a href="customer-login.php" class="active">Masuk Akun</a>
-      <a href="customer-register.php">Daftar Akun Baru</a>
+      <?php if ($allowRegister): ?><a href="customer-register.php">Daftar Akun Baru</a><?php endif; ?>
     </div>
 
     <?php if ($success): ?>
@@ -429,18 +429,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         🚀 Masuk ke Portal
       </button>
 
-      <!-- Demo helper info -->
-      <div class="demo-box">
-        <div>
-          <strong>Akun Demo:</strong><br>
-          customer@tidarteknik.com
-        </div>
-        <button type="button" class="btn-fill-demo" id="btn-fill-demo">Isi Cepat</button>
-      </div>
-
       <div class="card-footer">
-        Belum punya akun? <a href="customer-register.php">Daftar sekarang</a><br>
-        <span style="font-size:11px;opacity:.7;display:inline-block;margin-top:8px">
+        <a href="customer-forgot-password.php">Lupa password?</a><br>
+        <?php if ($allowRegister): ?>Belum punya akun? <a href="customer-register.php">Daftar sekarang</a><?php else: ?>Akun customer dibuat oleh admin CV. Tidar Teknik.<?php endif; ?><br>
+        <span style="font-size:11.5px;display:inline-block;margin-top:8px">
           Staff Internal Tidar Teknik? <a href="login.php" style="color:var(--navy-300)">Login Admin di sini</a>
         </span>
       </div>
@@ -456,12 +448,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       passVisible = !passVisible;
       passInput.type   = passVisible ? 'text' : 'password';
       toggleBtn.textContent = passVisible ? '🙈' : '👁️';
-    });
-
-    // Quick Fill Demo
-    document.getElementById('btn-fill-demo')?.addEventListener('click', () => {
-      document.getElementById('email').value = 'customer@tidarteknik.com';
-      document.getElementById('password').value = 'customer123';
     });
   </script>
 </body>

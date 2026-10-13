@@ -170,7 +170,7 @@ include 'db.php';
 
     .sh-label {
       font-size: 11px;
-      color: var(--navy-400);
+      color: #a8b5c7;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: .06em;
@@ -299,7 +299,7 @@ include 'db.php';
         <div style="display:flex;gap:8px">
           <a href="nota.php" class="btn btn-danger btn-sm">Cek Nota</a>
           <a href="po.php" class="btn btn-warning btn-sm"
-            style="background:#f59e0b;border-color:#d97706;color:white">Cek PO</a>
+            style="background:#f59e0b;border-color:#d97706;color:#0f172a">Cek PO</a>
         </div>
       </div>
 
@@ -314,7 +314,7 @@ include 'db.php';
         </div>
         <div style="display:flex;gap:8px">
           <a href="nota.php?filter_status=Sementara" class="btn btn-warning btn-sm"
-            style="background:#f59e0b;border-color:#d97706;color:white">Cek Nota Sementara</a>
+            style="background:#f59e0b;border-color:#d97706;color:#0f172a">Cek Nota Sementara</a>
         </div>
       </div>
 
@@ -384,7 +384,7 @@ include 'db.php';
       </div>
 
       <!-- CHARTS -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+      <div class="dash-grid-2" style="margin-bottom:20px">
         <div class="card">
           <div class="card-header">
             <span style="font-size:20px">📋</span>
@@ -422,7 +422,7 @@ include 'db.php';
       </div>
 
       <!-- RECENT TABLES -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="dash-grid-2">
         <!-- RECENT PO -->
         <div class="card">
           <div class="card-header">
@@ -558,8 +558,8 @@ include 'db.php';
         ptbody.innerHTML = `<tr><td colspan="4"><div class="empty-state" style="padding:20px"><div class="empty-icon" style="font-size:28px">📋</div><p>Belum ada PO. <a href="po.php?new=1" style="color:var(--teal-500)">Buat PO Baru →</a></p></div></td></tr>`;
       } else {
         ptbody.innerHTML = recentPO.map(p => `<tr class="recent-row">
-      <td class="td-mono" style="font-size:11.5px">${p.nomor}</td>
-      <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.supplier}</td>
+      <td class="td-mono" style="font-size:11.5px">${esc(p.nomor)}</td>
+      <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.supplier)}</td>
       <td class="td-amount">${fmt.rupiah(getPoTotal(p))}</td>
       <td>
         <div class="row-actions-dash">
@@ -581,8 +581,8 @@ include 'db.php';
         ntbody.innerHTML = `<tr><td colspan="4"><div class="empty-state" style="padding:20px"><div class="empty-icon" style="font-size:28px">🧾</div><p>Belum ada Nota. <a href="nota.php?new=1" style="color:var(--teal-500)">Buat Nota Baru →</a></p></div></td></tr>`;
       } else {
         ntbody.innerHTML = recentNota.map(n => `<tr class="recent-row">
-      <td class="td-mono" style="font-size:11px">${n.nomor}</td>
-      <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.customer}</td>
+      <td class="td-mono" style="font-size:11px">${esc(n.nomor)}</td>
+      <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.customer)}</td>
       <td class="td-amount">${fmt.rupiah(getNotaGT(n))}</td>
       <td>
         <div class="row-actions-dash">
@@ -599,10 +599,22 @@ include 'db.php';
       // ===== CHARTS =====
       const bulanShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
 
+      // Akhir rentang = bulan ini; bila tidak ada data dalam rentang itu (data lama),
+      // geser ke bulan data terbaru supaya grafik tidak kosong.
+      const chartEnd = (() => {
+        const dates = [...poList, ...notaList].map(x => new Date(x.tanggal)).filter(d => !isNaN(d));
+        if (!dates.length) return new Date(now.getFullYear(), now.getMonth(), 1);
+        const latest = new Date(Math.max(...dates));
+        const cur = new Date(now.getFullYear(), now.getMonth(), 1);
+        const latestM = new Date(latest.getFullYear(), latest.getMonth(), 1);
+        const windowStart = new Date(cur.getFullYear(), cur.getMonth() - 5, 1);
+        return latestM < windowStart ? latestM : cur;
+      })();
+
       function buildMonths(n) {
         const arr = [];
         for (let i = n - 1; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const d = new Date(chartEnd.getFullYear(), chartEnd.getMonth() - i, 1);
           arr.push({ label: bulanShort[d.getMonth()] + "'" + (d.getFullYear() % 100), month: d.getMonth(), year: d.getFullYear() });
         }
         return arr;

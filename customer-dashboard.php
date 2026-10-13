@@ -11,32 +11,16 @@ require_once 'customer-header.php';
 $cId = $currentCust['id'];
 
 // Ambil statistik customer
-$resOrdAll = mysqli_query($conn, "SELECT COUNT(*) FROM orders WHERE customer_id = '$cId'");
-$totalOrders = (int)mysqli_fetch_row($resOrdAll)[0];
+$totalOrders = (int)dbRow("SELECT COUNT(*) AS c FROM orders WHERE customer_id = ?", [$cId])['c'];
+$activeOrders = (int)dbRow("SELECT COUNT(*) AS c FROM orders WHERE customer_id = ? AND status_pesanan IN ('pending', 'diproses', 'dikirim')", [$cId])['c'];
+$pendingRequests = (int)dbRow("SELECT COUNT(*) AS c FROM product_requests WHERE customer_id = ? AND status = 'pending'", [$cId])['c'];
+$approvedRequests = (int)dbRow("SELECT COUNT(*) AS c FROM product_requests WHERE customer_id = ? AND status = 'approved'", [$cId])['c'];
+$totalWishlist = (int)dbRow("SELECT COUNT(*) AS c FROM customer_wishlist WHERE customer_id = ?", [$cId])['c'];
 
-$resOrdActive = mysqli_query($conn, "SELECT COUNT(*) FROM orders WHERE customer_id = '$cId' AND status_pesanan IN ('pending', 'diproses', 'dikirim')");
-$activeOrders = (int)mysqli_fetch_row($resOrdActive)[0];
-
-$resReqPending = mysqli_query($conn, "SELECT COUNT(*) FROM product_requests WHERE customer_id = '$cId' AND status = 'pending'");
-$pendingRequests = (int)mysqli_fetch_row($resReqPending)[0];
-
-$resReqApproved = mysqli_query($conn, "SELECT COUNT(*) FROM product_requests WHERE customer_id = '$cId' AND status = 'approved'");
-$approvedRequests = (int)mysqli_fetch_row($resReqApproved)[0];
-
-$resWish = mysqli_query($conn, "SELECT COUNT(*) FROM customer_wishlist WHERE customer_id = '$cId'");
-$totalWishlist = (int)mysqli_fetch_row($resWish)[0];
-
-// Ambil pesanan aktif terbaru untuk tracking
-$resLatestOrder = mysqli_query($conn, "SELECT * FROM orders WHERE customer_id = '$cId' ORDER BY created_at DESC LIMIT 1");
-$latestOrder = ($resLatestOrder && mysqli_num_rows($resLatestOrder) > 0) ? mysqli_fetch_assoc($resLatestOrder) : null;
-
-// Ambil 5 pesanan terakhir
-$resRecentOrders = mysqli_query($conn, "SELECT * FROM orders WHERE customer_id = '$cId' ORDER BY created_at DESC LIMIT 5");
-$recentOrders = mysqli_fetch_all($resRecentOrders, MYSQLI_ASSOC);
-
-// Ambil 5 request terakhir
-$resRecentReq = mysqli_query($conn, "SELECT * FROM product_requests WHERE customer_id = '$cId' ORDER BY created_at DESC LIMIT 5");
-$recentRequests = mysqli_fetch_all($resRecentReq, MYSQLI_ASSOC);
+// Pesanan terbaru, pesanan terakhir, dan request terbaru
+$latestOrder = dbRow("SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC LIMIT 1", [$cId]);
+$recentOrders = dbRows("SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC LIMIT 5", [$cId]);
+$recentRequests = dbRows("SELECT * FROM product_requests WHERE customer_id = ? ORDER BY created_at DESC LIMIT 5", [$cId]);
 ?>
 
 <?php if (!empty($_SESSION['customer_flash_welcome'])): ?>
@@ -47,15 +31,15 @@ $recentRequests = mysqli_fetch_all($resRecentReq, MYSQLI_ASSOC);
 <?php endif; ?>
 
 <!-- BANNER PROMO & NOTIFIKASI LAYANAN (Sitemap 3.1) -->
-<div style="background: linear-gradient(135deg, #0284c7, #0f766e); border-radius: var(--radius); padding: 22px 26px; color: #fff; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(2,132,199,0.22); position: relative; overflow: hidden;">
+<div style="background: linear-gradient(135deg, #075985, #0f766e); border-radius: var(--radius); padding: 22px 26px; color: #fff; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(2,132,199,0.22); position: relative; overflow: hidden;">
   <div style="position: relative; z-index: 2; max-width: 720px;">
-    <span style="background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; display: inline-block; margin-bottom: 8px;">
+    <span style="background: rgba(0,0,0,0.28); padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; display: inline-block; margin-bottom: 8px;">
       📢 Informasi Layanan &amp; Promo Dropship
     </span>
     <h2 style="font-size: 20px; font-weight: 800; margin: 0 0 6px 0; color: #fff;">
       Selamat Datang, <?= htmlspecialchars($currentCust['nama']) ?>!
     </h2>
-    <p style="font-size: 13px; color: rgba(255,255,255,0.92); line-height: 1.6; margin: 0;">
+    <p style="font-size: 13px; color: #fff; line-height: 1.6; margin: 0;">
       CV. Tidar Teknik menyediakan jaminan kecepatan pengadaan komponen industri langsung dari jaringan mitra supplier. 
       Nikmati <strong>Gratis Ongkir</strong> armada rekanan untuk area Malang &amp; Surabaya, serta fasilitas <strong>Request Barang Khusus</strong> dengan respon review admin langsung.
     </p>

@@ -7,3 +7,8 @@ RewriteRule ^print[\s\%\-]*po\.html$ print-po.php [R=301,L,NC]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} .*\.html$
 RewriteRule ^(.*)\.html$ $1.php [R=301,L,NC]
+
+# Jangan sajikan berkas data/dokumen/log langsung dari web
+<FilesMatch "\.(sql|bak|log|md|dist|lock)$">
+  Require all denied
+</FilesMatch>

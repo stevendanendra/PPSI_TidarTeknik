@@ -1,4 +1,8 @@
-<?php include 'db.php'; ?>
+<?php
+require_once 'auth.php';
+requireLogin();
+include 'db.php';
+?>
 <!DOCTYPE html>
 <html lang="id">
 
@@ -58,7 +62,7 @@
     </div>
   </div>
 
-  <script src="js/app.js?v=1.1"></script>
+  <script src="js/app.js?v=<?= time() ?>"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const params = new URLSearchParams(window.location.search);
@@ -94,9 +98,9 @@
             <table style="width: 100%; border: none; font-size: 8.2pt; line-height: 1.4; border-collapse: collapse;">
               ${parts.map(p => `
                 <tr>
-                  <td style="padding: 1px 0; color: #64748b; width: 70px; border: none;">${p[0]}</td>
+                  <td style="padding: 1px 0; color: #64748b; width: 70px; border: none;">${esc(p[0])}</td>
                   <td style="padding: 1px 4px; color: #64748b; width: 8px; border: none;">:</td>
-                  <td style="padding: 1px 0; color: #1e293b; font-weight: 500; border: none;">${p[1]}</td>
+                  <td style="padding: 1px 0; color: #1e293b; font-weight: 500; border: none;">${esc(p[1])}</td>
                 </tr>
               `).join('')}
             </table>
@@ -106,13 +110,13 @@
       <td class="td-no text-center" style="vertical-align: top; padding-top: 12px;">${i + 1}</td>
       <td class="td-desc" style="text-align: left; vertical-align: top; padding: 10px 12px;">
         <div style="display: flex; gap: 10px; align-items: flex-start; text-align: left;">
-          <div style="flex: 1; text-align: left; color: #0f172a; font-size: 10pt; line-height: 1.3;">${item.desc || ''}</div>
+          <div style="flex: 1; text-align: left; color: #0f172a; font-size: 10pt; line-height: 1.3;">${esc(item.desc || '')}</div>
           ${specHtml}
         </div>
       </td>
       <td class="td-qty text-center" style="vertical-align: top; padding-top: 12px;">${numQty}</td>
-      <td class="text-center" style="vertical-align: top; padding-top: 12px;">${item.type || ''}</td>
-      <td class="text-center" style="vertical-align: top; padding-top: 12px;">${item.code || ''}</td>
+      <td class="text-center" style="vertical-align: top; padding-top: 12px;">${esc(item.type || '')}</td>
+      <td class="text-center" style="vertical-align: top; padding-top: 12px;">${esc(item.code || '')}</td>
       <td class="td-price text-right" style="vertical-align: top; padding-top: 12px;">${item.price ? (parseFloat(item.price) || 0).toLocaleString('id-ID') : ''}</td>
       <td class="td-amount text-right amount-cell" style="vertical-align: top; padding-top: 12px;">${item.amount ? (parseFloat(item.amount) || 0).toLocaleString('id-ID') : ''}</td>
     </tr>`;
@@ -137,7 +141,7 @@
       </div>
       <div class="kop-doc-title">
         <span class="doc-label">PURCHASE<br>ORDER</span>
-        <div class="doc-no">No: ${p.nomor}</div>
+        <div class="doc-no">No: ${esc(p.nomor)}</div>
       </div>
     </div>
 
@@ -145,18 +149,18 @@
     <div class="doc-meta">
       <div class="meta-block">
         <div class="meta-label">To:</div>
-        <div class="meta-value big">${p.supplier || ''}</div>
-        ${p.kota ? `<div class="meta-value" style="font-size:9pt;color:#475569">${p.kota}</div>` : ''}
+        <div class="meta-value big">${esc(p.supplier || '')}</div>
+        ${p.kota ? `<div class="meta-value" style="font-size:9pt;color:#475569">${esc(p.kota)}</div>` : ''}
       </div>
       <div class="meta-block">
         <div class="meta-label">Date</div>
         <div class="meta-value">${fmt.date(p.tanggal)}</div>
       </div>
-      ${p.note1 ? `<div class="meta-block"><div class="meta-label">Payment</div><div class="meta-value">${p.note1}</div></div>` : '<div></div>'}
-      ${p.note2 ? `<div class="meta-block"><div class="meta-label">Note</div><div class="meta-value">${p.note2}</div></div>` : '<div></div>'}
+      ${p.note1 ? `<div class="meta-block"><div class="meta-label">Payment</div><div class="meta-value">${esc(p.note1)}</div></div>` : '<div></div>'}
+      ${p.note2 ? `<div class="meta-block"><div class="meta-label">Note</div><div class="meta-value">${esc(p.note2)}</div></div>` : '<div></div>'}
     </div>
 
-    ${p.alamatKirim ? `<div class="doc-address-block"><div class="meta-label">Shipping Address</div><div class="meta-value">${p.alamatKirim}</div></div>` : ''}
+    ${p.alamatKirim ? `<div class="doc-address-block"><div class="meta-label">Shipping Address</div><div class="meta-value">${esc(p.alamatKirim)}</div></div>` : ''}
 
     <!-- ITEMS TABLE -->
     <table class="items-table">

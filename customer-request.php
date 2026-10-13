@@ -16,11 +16,7 @@ $errorMsg   = '';
 $preloadProduct = null;
 $preProductId = trim($_GET['product_id'] ?? '');
 if (!empty($preProductId)) {
-    $cleanPId = mysqli_real_escape_string($conn, $preProductId);
-    $pQuery = mysqli_query($conn, "SELECT * FROM products WHERE id = '$cleanPId' LIMIT 1");
-    if ($pQuery && mysqli_num_rows($pQuery) > 0) {
-        $preloadProduct = mysqli_fetch_assoc($pQuery);
-    }
+    $preloadProduct = dbRow("SELECT * FROM products WHERE id = ? LIMIT 1", [$preProductId]);
 }
 
 // Proses submit form request
@@ -43,32 +39,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_request'])) {
         $nomorRequest = "REQ-{$dateCode}-{$randomCode}";
         $newReqId = 'req_' . substr(md5(uniqid(mt_rand(), true)), 0, 10);
 
-        $cleanNomor = mysqli_real_escape_string($conn, $nomorRequest);
-        $cleanNama  = mysqli_real_escape_string($conn, $namaBarang);
-        $cleanSat   = mysqli_real_escape_string($conn, $satuan);
-        $cleanSpec  = mysqli_real_escape_string($conn, $spesifikasi);
-        $cleanCat   = mysqli_real_escape_string($conn, $catatan);
-        $cleanPId   = !empty($prodId) ? "'" . mysqli_real_escape_string($conn, $prodId) . "'" : "NULL";
-
-        $sql = "INSERT INTO product_requests (id, nomor_request, customer_id, product_id, nama_barang, spesifikasi, qty, satuan, catatan, status) 
-                VALUES ('$newReqId', '$cleanNomor', '$cId', $cleanPId, '$cleanNama', '$cleanSpec', $qty, '$cleanSat', '$cleanCat', 'pending')";
-
-        if (mysqli_query($conn, $sql)) {
-            $successMsg = "Permintaan barang berhasil dikirim dengan Nomor: <strong>{$nomorRequest}</strong>. Admin CV. Tidar Teknik akan segera meninjau dan memberikan penawaran harga.";
+        try {
+            dbRun("INSERT INTO product_requests (id, nomor_request, customer_id, product_id, nama_barang, spesifikasi, qty, satuan, catatan, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')",
+                [$newReqId, $nomorRequest, $cId, $prodId !== '' ? $prodId : null, $namaBarang, $spesifikasi, $qty, $satuan, $catatan]);
+            $successMsg = "Permintaan barang berhasil dikirim dengan Nomor: <strong>" . h($nomorRequest) . "</strong>. Admin CV. Tidar Teknik akan segera meninjau dan memberikan penawaran harga.";
+            notify('admin', null, "Request barang baru {$nomorRequest} dari {$currentCust['nama']}: {$namaBarang}", 'admin-requests.php');
             $preloadProduct = null; // reset form
-        } else {
-            $errorMsg = 'Gagal mengirim permintaan: ' . mysqli_error($conn);
+        } catch (Throwable $e) {
+            $errorMsg = 'Gagal mengirim permintaan. Pastikan data valid lalu coba lagi.';
         }
     }
 }
 
 // Ambil daftar riwayat permintaan milik customer ini
-$myReqsRes = mysqli_query($conn, "SELECT r.*, p.kode AS kode_produk 
-                                  FROM product_requests r 
-                                  LEFT JOIN products p ON r.product_id = p.id 
-                                  WHERE r.customer_id = '$cId' 
-                                  ORDER BY r.created_at DESC");
-$myRequests = mysqli_fetch_all($myReqsRes, MYSQLI_ASSOC);
+$myRequests = dbRows("SELECT r.*, p.kode AS kode_produk
+                       FROM product_requests r
+                       LEFT JOIN products p ON r.product_id = p.id
+                       WHERE r.customer_id = ?
+                       ORDER BY r.created_at DESC", [$cId]);
 
 // Hitung rekap status
 $cntPending  = 0;

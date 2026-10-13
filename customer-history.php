@@ -417,8 +417,8 @@ include 'db.php';
     <a href="master.php" class="nav-item"><span class="nav-icon">🏢</span> Master Perusahaan</a>
   </nav>
   <div style="padding:12px 0 0">
-    <div style="font-size:11px;color:var(--navy-500);margin-bottom:8px;text-align:center">tidarteknik@gmail.com</div>
-    <a href="logout.php" style="display:flex;align-items:center;gap:6px;justify-content:center;padding:7px 12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#ef4444;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s" onmouseover="this.style.background='rgba(239,68,68,.25)'" onmouseout="this.style.background='rgba(239,68,68,.12)'" id="btn-logout-cus">🚪 Keluar</a>
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:8px;text-align:center">tidarteknik@gmail.com</div>
+    <a href="logout.php" style="display:flex;align-items:center;gap:6px;justify-content:center;padding:7px 12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#fca5a5;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s" onmouseover="this.style.background='rgba(239,68,68,.25)'" onmouseout="this.style.background='rgba(239,68,68,.12)'" id="btn-logout-cus">🚪 Keluar</a>
   </div>
 </aside>
 
@@ -479,7 +479,7 @@ include 'db.php';
             <table class="ledger-grid input-mode" style="width:max-content; border-collapse:collapse">
               <thead style="position:sticky; top:0; z-index:100">
                 <tr>
-                  <th rowspan="2" style="background:#f1f5f9; border:1px solid #cbd5e1; width:50px; text-align:center">AKSI</th>
+                  <th rowspan="2" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; width:50px; text-align:center">AKSI</th>
                   <th colspan="20" class="th-sales" style="text-align:center; background:#fef3c7; color:#92400e; border:1px solid #fde68a">PENJUALAN</th>
                   <th colspan="11" class="th-purch-start" style="text-align:center; background:#e0f2fe; color:#075985; border:1px solid #bae6fd">PEMBELIAN (AWAL)</th>
                   <th colspan="11" class="th-purch-ppn" style="text-align:center; background:#f3f0ff; color:#5b21b6; border:1px solid #ddd6fe">PEMBELIAN PPN</th>

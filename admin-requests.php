@@ -6,35 +6,36 @@
 
 require_once 'auth.php';
 requireLogin();
-require_once 'db.php';
+require_once 'lib.php';
 
 $success = '';
 $error = '';
 
 // Handle review submit (Approve / Reject)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_review'])) {
-    $reqId        = mysqli_real_escape_string($conn, $_POST['request_id'] ?? '');
-    $newStatus    = mysqli_real_escape_string($conn, $_POST['status'] ?? 'pending');
+    $reqId        = trim($_POST['request_id'] ?? '');
+    $newStatus    = trim($_POST['status'] ?? 'pending');
     $harga        = (float)($_POST['harga_disetujui'] ?? 0);
-    $catatanAdmin = mysqli_real_escape_string($conn, $_POST['catatan_admin'] ?? '');
+    $catatanAdmin = trim($_POST['catatan_admin'] ?? '');
+    $req = $reqId !== '' ? dbRow("SELECT id, customer_id, nomor_request, nama_barang FROM product_requests WHERE id = ?", [$reqId]) : null;
 
-    if (empty($reqId)) {
+    if (!$req) {
         $error = 'ID request tidak valid.';
+    } elseif (!in_array($newStatus, ['pending', 'approved', 'rejected'], true)) {
+        $error = 'Status tidak valid.';
     } elseif ($newStatus === 'approved' && $harga <= 0) {
         $error = 'Harga yang disetujui harus lebih besar dari Rp 0.';
     } else {
-        $qHarga = ($newStatus === 'approved') ? $harga : "NULL";
-        $updateSql = "UPDATE product_requests 
-                      SET status = '$newStatus', 
-                          harga_disetujui = $qHarga, 
-                          catatan_admin = '$catatanAdmin', 
-                          tanggal_review = NOW() 
-                      WHERE id = '$reqId'";
-
-        if (mysqli_query($conn, $updateSql)) {
-            $success = "Permintaan barang berhasil diperbarui menjadi status: <strong>" . strtoupper($newStatus) . "</strong>.";
-        } else {
-            $error = 'Gagal menyimpan review: ' . mysqli_error($conn);
+        try {
+            dbRun("UPDATE product_requests SET status = ?, harga_disetujui = ?, catatan_admin = ?, tanggal_review = NOW() WHERE id = ?",
+                [$newStatus, $newStatus === 'approved' ? $harga : null, $catatanAdmin, $reqId]);
+            $success = "Permintaan barang berhasil diperbarui menjadi status: <strong>" . h(strtoupper($newStatus)) . "</strong>.";
+            if ($newStatus !== 'pending') {
+                $label = $newStatus === 'approved' ? 'disetujui dengan harga Rp ' . number_format($harga, 0, ',', '.') . '. Silakan checkout' : 'ditolak';
+                notify('customer', $req['customer_id'], "Request {$req['nomor_request']} ({$req['nama_barang']}) $label.", 'customer-request.php');
+            }
+        } catch (Throwable $e) {
+            $error = 'Gagal menyimpan review. Coba lagi.';
         }
     }
 }
@@ -42,24 +43,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_review'])) {
 // Filter status
 $filterStatus = trim($_GET['status'] ?? '');
 $where = ["1=1"];
-if (!empty($filterStatus)) {
-    $fs = mysqli_real_escape_string($conn, $filterStatus);
-    $where[] = "r.status = '$fs'";
+$params = [];
+if (in_array($filterStatus, ['pending', 'approved', 'rejected', 'ordered'], true)) {
+    $where[] = "r.status = ?";
+    $params[] = $filterStatus;
 }
 $whereClause = implode(" AND ", $where);
 
 // Ambil data requests
-$sql = "SELECT r.*, c.nama AS nama_customer, c.email AS email_customer, c.telepon AS telp_customer, c.kota AS kota_customer 
-        FROM product_requests r 
-        JOIN customers c ON r.customer_id = c.id 
-        WHERE $whereClause 
-        ORDER BY FIELD(r.status, 'pending', 'approved', 'rejected', 'ordered'), r.created_at DESC";
-$resReq = mysqli_query($conn, $sql);
-$requests = mysqli_fetch_all($resReq, MYSQLI_ASSOC);
+$requests = dbRows("SELECT r.*, c.nama AS nama_customer, c.email AS email_customer, c.telepon AS telp_customer, c.kota AS kota_customer
+                    FROM product_requests r
+                    JOIN customers c ON r.customer_id = c.id
+                    WHERE $whereClause
+                    ORDER BY FIELD(r.status, 'pending', 'approved', 'rejected', 'ordered'), r.created_at DESC", $params);
 
 // Hitung total pending untuk badge
-$cntPendingRes = mysqli_query($conn, "SELECT COUNT(*) FROM product_requests WHERE status = 'pending'");
-$totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
+$totalPending = (int)dbRow("SELECT COUNT(*) AS c FROM product_requests WHERE status = 'pending'")['c'];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -116,7 +115,7 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
     </nav>
     <div class="sidebar-footer">
       <div style="margin-bottom:8px">📞 0822 2525 5251 &nbsp;|&nbsp; tidarteknik@gmail.com</div>
-      <a href="logout.php" style="display:flex;align-items:center;gap:6px;justify-content:center;padding:7px 12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#ef4444;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s" id="btn-logout">🚪 Keluar</a>
+      <a href="logout.php" style="display:flex;align-items:center;gap:6px;justify-content:center;padding:7px 12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#fca5a5;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s" id="btn-logout">🚪 Keluar</a>
     </div>
   </aside>
 
