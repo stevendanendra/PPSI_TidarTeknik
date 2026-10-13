@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $amount = $price * (float)$it['qty'];
                         $total += $amount;
                         dbRun("INSERT INTO po_items (po_id, deskripsi, tipe, qty, price, amount, has_specs, specs) VALUES (?, ?, ?, ?, ?, ?, 0, '[]')",
-                            [$poId, $it['nama_barang'], (string)$it['spesifikasi'], (float)$it['qty'], $price, $amount]);
+                            [$poId, $it['nama_barang'], mb_substr((string)$it['spesifikasi'], 0, 100), (float)$it['qty'], $price, $amount]); // kolom tipe VARCHAR(100)
                         dbRun("UPDATE order_items SET po_id = ?, supplier_id = ? WHERE id = ?", [$poId, $supId, $itemId]);
                     }
                     dbRun("UPDATE po SET total = ? WHERE id = ?", [$total, $poId]);
