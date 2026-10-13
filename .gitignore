@@ -25,3 +25,8 @@ desktop.ini
 *.sublime-workspace
 *.swp
 *.swo
+
+# Konfigurasi lokal (kredensial)
+/config.php
+/uploads/*
+!/uploads/.gitkeep

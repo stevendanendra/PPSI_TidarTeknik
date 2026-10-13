@@ -3,10 +3,11 @@
  * Database configuration and connection
  */
 
-$host = 'localhost';
-$user = 'root';
-$pass = '';
-$db   = 'ppsi_tidarteknik';
+$cfg  = is_file(__DIR__ . '/config.php') ? (require __DIR__ . '/config.php') : [];
+$host = $cfg['db_host'] ?? 'localhost';
+$user = $cfg['db_user'] ?? 'root';
+$pass = $cfg['db_pass'] ?? '';
+$db   = $cfg['db_name'] ?? 'ppsi_tidarteknik';
 
 $conn = mysqli_connect($host, $user, $pass);
 

@@ -9,9 +9,22 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Konfigurasi akun (ganti password sesuai kebutuhan)
-define('AUTH_USERNAME', 'tidarteknik');
-define('AUTH_PASSWORD', 'tidarteknik333777');
+// Kredensial dibaca dari config.php (tidak di-commit). Lihat config.sample.php.
+$GLOBALS['app_config'] = (static function () {
+    $file = __DIR__ . '/config.php';
+    return is_file($file) ? (require $file) : [];
+})();
+
+/** Cek username + password admin terhadap config.php (hash bila ada). */
+function verifyAdminLogin(string $user, string $pass): bool {
+    $cfg  = $GLOBALS['app_config'];
+    $u    = $cfg['admin_username'] ?? '';
+    $hash = $cfg['admin_password_hash'] ?? '';
+    $plain = $cfg['admin_password'] ?? '';
+    if ($u === '' || !hash_equals($u, $user)) return false;
+    if ($hash !== '') return password_verify($pass, $hash);
+    return $plain !== '' && hash_equals($plain, $pass);
+}
 define('AUTH_SESSION_KEY', 'tidar_auth');
 define('AUTH_SESSION_TIMEOUT', 8 * 60 * 60); // 8 jam dalam detik
 

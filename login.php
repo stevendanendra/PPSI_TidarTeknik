@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $inputUser = trim($_POST['username'] ?? '');
     $inputPass = trim($_POST['password'] ?? '');
 
-    if ($inputUser === AUTH_USERNAME && $inputPass === AUTH_PASSWORD) {
+    if (verifyAdminLogin($inputUser, $inputPass)) {
         $_SESSION[AUTH_SESSION_KEY] = true;
         $_SESSION['auth_time']      = time();
         $_SESSION['auth_user']      = $inputUser;
