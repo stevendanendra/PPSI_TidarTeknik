@@ -31,3 +31,6 @@ desktop.ini
 /uploads/*
 !/uploads/.gitkeep
 !/uploads/.htaccess
+
+# Keluaran uji E2E
+/tests/hasil-e2e.json
