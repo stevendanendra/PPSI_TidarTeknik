@@ -1,0 +1,27 @@
+# Dependencies / Composer / Node (if any)
+/vendor/
+node_modules/
+
+# Environment / Local settings
+.env
+.env.local
+
+# Temporary / Scratch Files
+/scratch/
+*.zip
+*.tar.gz
+*.rar
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo

@@ -1,0 +1,9 @@
+RewriteEngine On
+# 1. Tangani khusus file print yang ada spasi atau tanda hubung
+RewriteRule ^print[\s\%\-]*nota\.html$ print-nota.php [R=301,L,NC]
+RewriteRule ^print[\s\%\-]*po\.html$ print-po.php [R=301,L,NC]
+
+# 2. Redirect semua .html ke .php jika file .php nya ada
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} .*\.html$
+RewriteRule ^(.*)\.html$ $1.php [R=301,L,NC]
