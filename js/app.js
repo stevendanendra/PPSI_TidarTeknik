@@ -143,7 +143,9 @@ const dbStore = {
       [KEYS.PENAWARAN_LIST]: 'save_penawaran',
       [KEYS.LEDGER]: 'save_ledger'
     };
-    const res = await fetch(`api.php?action=${actionMap[key]}`, {
+    // Daftar kosong hanya boleh menghapus semua data bila dikirim eksplisit (mis. menghapus item terakhir).
+    const allowEmpty = Array.isArray(val) && val.length === 0 ? '&allow_empty=1' : '';
+    const res = await fetch(`api.php?action=${actionMap[key]}${allowEmpty}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(val)

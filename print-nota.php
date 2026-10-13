@@ -1,4 +1,8 @@
-<?php include 'db.php'; ?>
+<?php
+require_once 'auth.php';
+requireLogin();
+include 'db.php';
+?>
 <!DOCTYPE html>
 <html lang="id">
 

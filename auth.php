@@ -18,13 +18,21 @@ define('AUTH_SESSION_TIMEOUT', 8 * 60 * 60); // 8 jam dalam detik
 /**
  * Cek apakah user sudah login dan sesi masih valid.
  * Jika belum, redirect ke halaman login.
+ * Dengan $json = true (untuk endpoint AJAX), balas JSON 401 tanpa redirect.
  */
-function requireLogin(): void {
+function requireLogin(bool $json = false): void {
     if (
         !isset($_SESSION[AUTH_SESSION_KEY]) ||
         !$_SESSION[AUTH_SESSION_KEY] ||
         (time() - ($_SESSION['auth_time'] ?? 0)) > AUTH_SESSION_TIMEOUT
     ) {
+        if ($json) {
+            session_destroy();
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
+            exit;
+        }
         // Simpan halaman tujuan agar bisa redirect balik setelah login
         $_SESSION['auth_redirect'] = $_SERVER['REQUEST_URI'];
         session_destroy();
