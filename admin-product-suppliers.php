@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $flash = 'Kandidat dihapus.';
         }
     } catch (Throwable $e) {
-        $flash = 'Gagal: ' . $e->getMessage();
+        $flash = safeError($e, 'Gagal menyimpan. Coba lagi.');
         $flashType = 'error';
     }
 }

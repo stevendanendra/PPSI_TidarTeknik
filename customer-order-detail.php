@@ -36,18 +36,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $orderOpen) {
         $tipe   = $_POST['tipe'] ?? 'pelunasan';
         $jumlah = (float)str_replace(['.', ','], ['', '.'], (string)($_POST['jumlah'] ?? '0'));
         $sisa   = (float)$order['total'] - (float)$order['total_dibayar'];
-        [$path, $upErr] = saveUpload($_FILES['bukti'] ?? [], 'bukti', MIME_PROOF, 5 * 1024 * 1024);
         if (!in_array($tipe, ['dp', 'term', 'partial', 'pelunasan'], true)) {
             $alertMsg = 'Jenis pembayaran tidak valid.'; $alertType = 'error';
-        } elseif ($jumlah <= 0) {
+        } elseif (!is_finite($jumlah) || $jumlah <= 0) {
             $alertMsg = 'Jumlah pembayaran harus lebih dari 0.'; $alertType = 'error';
         } elseif ($jumlah > $sisa + 0.01) {
             $alertMsg = 'Jumlah melebihi sisa tagihan (Rp ' . number_format($sisa, 0, ',', '.') . ').'; $alertType = 'error';
-        } elseif ($upErr) {
-            $alertMsg = $upErr; $alertType = 'error';
-        } elseif (!$path) {
+        } elseif (throttleBlocked('upload', $cId, 20, 60)) {
+            $alertMsg = 'Terlalu banyak unggahan. Coba lagi dalam 1 jam.'; $alertType = 'error';
+        } elseif (($saved = saveUpload($_FILES['bukti'] ?? [], 'bukti', MIME_PROOF, 5 * 1024 * 1024))[1]) {
+            $alertMsg = $saved[1]; $alertType = 'error';
+        } elseif (!($path = $saved[0])) {
             $alertMsg = 'Bukti transfer (foto/PDF) wajib diunggah.'; $alertType = 'error';
         } else {
+            throttleHit('upload', $cId);
             $catatan = 'An. ' . trim($_POST['nama_pengirim'] ?? '') . ' (' . trim($_POST['bank_pengirim'] ?? '') . '). ' . trim($_POST['catatan_bayar'] ?? '');
             dbRun("INSERT INTO payments (order_id, customer_id, tipe, jumlah, bukti_file, catatan) VALUES (?, ?, ?, ?, ?, ?)",
                 [$orderId, $cId, $tipe, $jumlah, $path, $catatan]);

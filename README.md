@@ -78,7 +78,8 @@ Sistem Informasi Manajemen Terintegrasi untuk **CV. Tidar Teknik** (Supplier Tek
 - **Query**: seluruh akses database memakai prepared statement.
 - **XSS**: data pengguna di-escape di PHP (`h()`) dan di JavaScript (`esc()`).
 - **File upload**: divalidasi dari isi file (bukan ekstensi), disimpan dengan nama acak, dan hanya bisa dibuka lewat `download.php` oleh admin atau pemilik pesanan. Untuk server Nginx, letakkan folder upload di luar web root lewat `upload_dir` di `config.php`, karena `.htaccess` hanya berlaku di Apache.
-- **Production**: isi `admin_password_hash`, matikan `show_reset_link`, dan pakai HTTPS.
+- **Production**: isi `admin_password_hash` dan `base_url` (alamat publik; dipakai untuk tautan reset password, header Host pengunjung tidak dipercaya), matikan `show_reset_link` (tautan di layar hanya tampil untuk localhost), biarkan `debug` bernilai false (detail error hanya ke log server), dan pakai HTTPS.
+- **Akun customer**: nama perusahaan unik dan hanya bisa diubah admin; akun yang dinonaktifkan langsung kehilangan akses.
 
 ---
 

@@ -24,7 +24,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $err = 'Mohon isi alasan atau catatan revisi.';
     } else {
         $newStatus = $decision === 'setuju' ? 'Disetujui' : 'Ditolak';
-        dbRun("UPDATE penawaran SET status = ?, alasan_respon = ?, responded_at = NOW() WHERE id = ?", [$newStatus, $reason !== '' ? $reason : null, $pn['id']]);
+        $st = dbRun("UPDATE penawaran SET status = ?, alasan_respon = ?, responded_at = NOW() WHERE id = ? AND status = 'Dikirim'", [$newStatus, $reason !== '' ? $reason : null, $pn['id']]);
+        if (mysqli_stmt_affected_rows($st) !== 1) {
+            $err = 'Penawaran sudah diproses sebelumnya.';
+        }
+    }
+    if ($err === '' && isset($newStatus)) {
         $label = ['setuju' => 'MENYETUJUI', 'tolak' => 'MENOLAK', 'revisi' => 'meminta REVISI'][$decision];
         notify('admin', null, "{$currentCust['nama']} $label penawaran {$pn['nomor']} (V{$pn['versi']})" . ($reason !== '' ? ": $reason" : ''), 'penawaran.php');
         $msg = $decision === 'setuju' ? 'Penawaran disetujui. Tim kami akan memproses pesanan Anda.' : 'Tanggapan Anda sudah dikirim ke admin.';

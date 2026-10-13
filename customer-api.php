@@ -16,7 +16,8 @@ if (!isCustomerLoggedIn()) {
 
 $currentCust = getCurrentCustomer();
 $cId = $currentCust['id'];
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
+// GET hanya untuk membaca notifikasi; aksi lain wajib POST
+$action = $_POST['action'] ?? ((($_GET['action'] ?? '') === 'notifications') ? 'notifications' : '');
 
 switch ($action) {
     case 'toggle_wishlist':
@@ -37,7 +38,7 @@ switch ($action) {
 
     case 'add_to_cart':
         $pid = trim($_POST['product_id'] ?? '');
-        $qty = max(1, (int)($_POST['qty'] ?? 1));
+        $qty = min(100000, max(1, (int)($_POST['qty'] ?? 1)));
         if (!activeProduct($pid)) {
             echo json_encode(['status' => 'error', 'message' => 'Produk tidak ditemukan']);
             break;

@@ -21,11 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fields = [trim($_POST['kode'] ?? ''), strtoupper(trim($_POST['kota'] ?? '')), trim($_POST['alamat'] ?? ''),
                    trim($_POST['telepon'] ?? ''), trim($_POST['pic'] ?? ''), trim($_POST['npwp'] ?? '')];
         $dupe = $email !== '' ? dbRow("SELECT id FROM customers WHERE email = ? AND id <> ?", [$email, $id]) : null;
+        $dupeName = $nama !== '' ? dbRow("SELECT id FROM customers WHERE LOWER(nama) = LOWER(?) AND id <> ? AND email IS NOT NULL AND email <> ''", [$nama, $id]) : null;
 
         if ($nama === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $flash = 'Nama dan email yang valid wajib diisi.'; $flashType = 'error';
         } elseif ($dupe) {
             $flash = 'Email sudah dipakai akun lain.'; $flashType = 'error';
+        } elseif ($dupeName) {
+            $flash = 'Sudah ada akun dengan nama perusahaan yang sama. Gunakan nama yang unik (mis. tambahkan kota/cabang).'; $flashType = 'error';
         } elseif ($id === '' && strlen($pass) < 6) {
             $flash = 'Password awal minimal 6 karakter.'; $flashType = 'error';
         } elseif ($pass !== '' && strlen($pass) < 6) {
@@ -108,7 +111,7 @@ $v = fn($k, $d = '') => h($edit[$k] ?? $d);
       <div class="form-group"><label class="form-label <?= empty($edit['id']) ? 'required' : '' ?>"><?= !empty($edit['id']) ? 'Reset Password (kosongkan bila tidak diubah)' : 'Password Awal' ?></label>
         <input type="text" name="password" class="form-control" value="<?= empty($edit['id']) ? h(DEFAULT_CUSTOMER_PASSWORD) : '' ?>" autocomplete="off" <?= empty($edit['id']) ? 'required' : '' ?>></div>
       <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin-bottom:12px">
-        <input type="checkbox" name="must_change" value="1"> Wajib ganti password saat login pertama</label>
+        <input type="checkbox" name="must_change" value="1" checked> Wajib ganti password saat login pertama (disarankan)</label>
       <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group"><label class="form-label">Kode</label><input type="text" name="kode" class="form-control" value="<?= $v('kode') ?>"></div>
         <div class="form-group"><label class="form-label">Kota</label><input type="text" name="kota" class="form-control" value="<?= $v('kota') ?>"></div>

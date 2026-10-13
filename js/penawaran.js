@@ -156,7 +156,7 @@ function renderPnTable(data) {
       <td>${fmt.date(n.tanggal)}</td>
       <td><strong>${esc(n.customer)}</strong></td>
       <td>${esc(n.att || '-')}</td>
-      <td style="font-size: 11px; color: var(--navy-500)">${shortNotes}</td>
+      <td style="font-size: 11px; color: var(--navy-500)">${esc(shortNotes)}</td>
       <td class="td-amount">${fmt.rupiah(n.total)}${ppnBadge}</td>
       <td class="td-actions" style="display:flex;gap:4px">
         <button class="btn btn-sm btn-ghost btn-icon" title="Cetak Surat Penawaran" onclick="printPn('${n.id}')">🖨️</button>

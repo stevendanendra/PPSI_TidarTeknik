@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $flash = 'PO dibuat: ' . implode('; ', $made) . '. Lengkapi harga modal di menu Purchase Order bila masih Rp 0.';
             } catch (Throwable $e) {
                 mysqli_rollback($conn);
-                $flash = 'Gagal membuat PO: ' . $e->getMessage();
+                $flash = safeError($e, 'Gagal membuat PO. Coba lagi.');
                 $flashType = 'error';
             }
         }

@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $success = 'Produk baru berhasil ditambahkan ke katalog.';
             }
         } catch (Throwable $e) {
-            $error = 'Gagal menyimpan produk: ' . $e->getMessage();
+            $error = safeError($e, 'Gagal menyimpan produk. Periksa isian lalu coba lagi.');
         }
     }
 }

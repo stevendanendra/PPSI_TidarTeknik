@@ -34,7 +34,7 @@ include 'db.php';
     </div>
   </div>
 
-  <script src="js/app.js?v=1.1"></script>
+  <script src="js/app.js?v=<?= time() ?>"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const params = new URLSearchParams(window.location.search);
@@ -75,15 +75,15 @@ include 'db.php';
             <td class="td-no text-center" style="vertical-align: top; padding-top: 12px;">${i + 1}</td>
             <td class="td-desc" style="text-align: left; vertical-align: top; padding: 10px 12px;">
               <div style="display: flex; gap: 10px; align-items: flex-start; text-align: left;">
-                <div style="flex: 1; text-align: left; color: #0f172a; font-size: 10pt; line-height: 1.3;">${item.desc || ''}</div>
+                <div style="flex: 1; text-align: left; color: #0f172a; font-size: 10pt; line-height: 1.3;">${esc(item.desc || '')}</div>
                 ${item.hasSpecs && parts.length > 0 ? `
                   <div style="width: 230px; padding-left: 15px; border-left: 1px solid #e2e8f0; flex-shrink: 0;">
                     <table style="width: 100%; border: none; font-size: 8.2pt; line-height: 1.4; border-collapse: collapse;">
                       ${parts.map(p => `
                         <tr>
-                          <td style="padding: 1px 0; color: #64748b; width: 70px; border: none;">${p[0]}</td>
+                          <td style="padding: 1px 0; color: #64748b; width: 70px; border: none;">${esc(p[0])}</td>
                           <td style="padding: 1px 4px; color: #64748b; width: 8px; border: none;">:</td>
-                          <td style="padding: 1px 0; color: #1e293b; font-weight: 500; border: none;">${p[1]}</td>
+                          <td style="padding: 1px 0; color: #1e293b; font-weight: 500; border: none;">${esc(p[1])}</td>
                         </tr>
                       `).join('')}
                     </table>
@@ -92,7 +92,7 @@ include 'db.php';
               </div>
             </td>
             <td class="td-qty text-center" style="vertical-align: top; padding-top: 12px;">${Math.floor(item.qty) || 0}</td>
-            <td class="text-center" style="vertical-align: top; padding-top: 12px;">${item.satuan || ''}</td>
+            <td class="text-center" style="vertical-align: top; padding-top: 12px;">${esc(item.satuan || '')}</td>
             <td class="td-price text-right" style="vertical-align: top; padding-top: 12px;">${item.price ? (parseFloat(item.price) || 0).toLocaleString('id-ID') : ''}</td>
             <td class="td-amount text-right amount-cell" style="vertical-align: top; padding-top: 12px;">${item.amount ? (parseFloat(item.amount) || 0).toLocaleString('id-ID') : ''}</td>
           </tr>`;
@@ -133,7 +133,7 @@ include 'db.php';
         </div>
         <div class="kop-doc-title">
           <span class="doc-label">INVOICE</span>
-          <div class="doc-no">No: ${n.nomor}</div>
+          <div class="doc-no">No: ${esc(n.nomor)}</div>
         </div>
       </div>
 
@@ -141,7 +141,7 @@ include 'db.php';
       <div class="doc-meta">
         <div class="meta-block">
           <div class="meta-label">To:</div>
-          <div class="meta-value big">${n.customer || ''}</div>
+          <div class="meta-value big">${esc(n.customer || '')}</div>
         </div>
         <div class="meta-block">
           <div class="meta-label">Date</div>
@@ -149,7 +149,7 @@ include 'db.php';
         </div>
         <div class="meta-block">
           <div class="meta-label">Customer PO No.</div>
-          <div class="meta-value">${n.refPO || '0'}</div>
+          <div class="meta-value">${esc(n.refPO || '0')}</div>
         </div>
         ${!isLunas ? `
         <div class="meta-block">
@@ -160,11 +160,11 @@ include 'db.php';
           <div class="meta-label">Due Date</div>
           <div class="meta-value">${fmt.date(dueStr)}</div>
         </div>` : `<div></div>`}
-        ${n.tujuanKirim ? `<div class="meta-block"><div class="meta-label">Destination</div><div class="meta-value">${n.tujuanKirim}</div></div>` : '<div></div>'}
+        ${n.tujuanKirim ? `<div class="meta-block"><div class="meta-label">Destination</div><div class="meta-value">${esc(n.tujuanKirim)}</div></div>` : '<div></div>'}
       </div>
 
-      ${n.alamatInvoice ? `<div class="doc-address-block"><div class="meta-label">Address</div><div class="meta-value">${n.alamatInvoice}</div></div>` : ''}
-      ${n.ekspedisi ? `<div class="doc-address-block" style="border-color:var(--am-500)"><div class="meta-label">Expedition</div><div class="meta-value">${n.ekspedisi}</div></div>` : ''}
+      ${n.alamatInvoice ? `<div class="doc-address-block"><div class="meta-label">Address</div><div class="meta-value">${esc(n.alamatInvoice)}</div></div>` : ''}
+      ${n.ekspedisi ? `<div class="doc-address-block" style="border-color:var(--am-500)"><div class="meta-label">Expedition</div><div class="meta-value">${esc(n.ekspedisi)}</div></div>` : ''}
 
       <!-- ITEMS -->
       <table class="items-table">
@@ -229,15 +229,15 @@ include 'db.php';
             <td class="td-no text-center" style="vertical-align: top; padding-top: 12px;">${i + 1}</td>
             <td class="td-desc" style="text-align: left; vertical-align: top; padding: 10px 12px;">
               <div style="display: flex; gap: 10px; align-items: flex-start; text-align: left;">
-                <div style="flex: 1; text-align: left; color: #0f172a; font-size: 10pt; line-height: 1.3;">${item.desc || ''}</div>
+                <div style="flex: 1; text-align: left; color: #0f172a; font-size: 10pt; line-height: 1.3;">${esc(item.desc || '')}</div>
                 ${item.hasSpecs && parts.length > 0 ? `
                   <div style="width: 230px; padding-left: 15px; border-left: 1px solid #e2e8f0; flex-shrink: 0;">
                     <table style="width: 100%; border: none; font-size: 8.2pt; line-height: 1.4; border-collapse: collapse;">
                       ${parts.map(p => `
                         <tr>
-                          <td style="padding: 1px 0; color: #64748b; width: 70px; border: none;">${p[0]}</td>
+                          <td style="padding: 1px 0; color: #64748b; width: 70px; border: none;">${esc(p[0])}</td>
                           <td style="padding: 1px 4px; color: #64748b; width: 8px; border: none;">:</td>
-                          <td style="padding: 1px 0; color: #1e293b; font-weight: 500; border: none;">${p[1]}</td>
+                          <td style="padding: 1px 0; color: #1e293b; font-weight: 500; border: none;">${esc(p[1])}</td>
                         </tr>
                       `).join('')}
                     </table>
@@ -246,7 +246,7 @@ include 'db.php';
               </div>
             </td>
             <td class="td-qty text-center" style="vertical-align: top; padding-top: 12px;">${Math.floor(item.qty) || 0}</td>
-            <td class="text-center" style="vertical-align: top; padding-top: 12px;">${item.satuan || ''}</td>
+            <td class="text-center" style="vertical-align: top; padding-top: 12px;">${esc(item.satuan || '')}</td>
           </tr>`;
         }).join('');
 
@@ -274,7 +274,7 @@ include 'db.php';
         </div>
         <div class="kop-doc-title">
           <span class="doc-label">SURAT JALAN</span>
-          <div class="doc-no">No: ${n.nomor}</div>
+          <div class="doc-no">No: ${esc(n.nomor)}</div>
         </div>
       </div>
 
@@ -282,7 +282,7 @@ include 'db.php';
       <div class="doc-meta">
         <div class="meta-block">
           <div class="meta-label">To:</div>
-          <div class="meta-value big">${n.customer || ''}</div>
+          <div class="meta-value big">${esc(n.customer || '')}</div>
         </div>
         <div class="meta-block">
           <div class="meta-label">Date</div>
@@ -290,13 +290,13 @@ include 'db.php';
         </div>
         <div class="meta-block">
           <div class="meta-label">Customer PO No.</div>
-          <div class="meta-value">${n.refPO || '0'}</div>
+          <div class="meta-value">${esc(n.refPO || '0')}</div>
         </div>
-        ${n.tujuanKirim ? `<div class="meta-block"><div class="meta-label">Destination</div><div class="meta-value">${n.tujuanKirim}</div></div>` : '<div></div>'}
+        ${n.tujuanKirim ? `<div class="meta-block"><div class="meta-label">Destination</div><div class="meta-value">${esc(n.tujuanKirim)}</div></div>` : '<div></div>'}
       </div>
 
-      ${n.alamatSJ ? `<div class="doc-address-block"><div class="meta-label">Shipping Address</div><div class="meta-value">${n.alamatSJ}</div></div>` : ''}
-      ${n.ekspedisi ? `<div class="doc-address-block" style="border-color:#f59e0b"><div class="meta-label">Expedition</div><div class="meta-value">${n.ekspedisi}</div></div>` : ''}
+      ${n.alamatSJ ? `<div class="doc-address-block"><div class="meta-label">Shipping Address</div><div class="meta-value">${esc(n.alamatSJ)}</div></div>` : ''}
+      ${n.ekspedisi ? `<div class="doc-address-block" style="border-color:#f59e0b"><div class="meta-label">Expedition</div><div class="meta-value">${esc(n.ekspedisi)}</div></div>` : ''}
 
       <!-- ITEMS -->
       <table class="items-table">
@@ -316,7 +316,7 @@ include 'db.php';
         </div>
       </div>
 
-      ${n.catatan ? `<div class="doc-notes"><div class="doc-notes-title">Notes:</div><div style="white-space:pre-wrap">${n.catatan}</div></div>` : ''}
+      ${n.catatan ? `<div class="doc-notes"><div class="doc-notes-title">Notes:</div><div style="white-space:pre-wrap">${esc(n.catatan)}</div></div>` : ''}
 
       <!-- FOOTER SJ -->
       <div class="doc-footer" style="justify-content: space-between; border-top: none; margin-top: 10px">

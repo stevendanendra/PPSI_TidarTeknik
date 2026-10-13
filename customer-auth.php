@@ -25,6 +25,17 @@ function isCustomerLoggedIn(): bool {
     ) {
         return false;
     }
+    // Akun yang dinonaktifkan/dihapus admin langsung kehilangan akses (tidak menunggu sesi habis)
+    static $statusCache = [];
+    $id = (string)$_SESSION[CUSTOMER_ID_KEY];
+    if (!array_key_exists($id, $statusCache)) {
+        $row = dbRow("SELECT status FROM customers WHERE id = ?", [$id]);
+        $statusCache[$id] = $row['status'] ?? null;
+    }
+    if ($statusCache[$id] !== 'active') {
+        unset($_SESSION[CUSTOMER_SESSION_KEY], $_SESSION[CUSTOMER_ID_KEY]);
+        return false;
+    }
     return true;
 }
 

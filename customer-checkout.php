@@ -70,14 +70,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
     $qtyOk = true;
     foreach ($items as $i => $it) {
         if ($it['qty_editable']) {
-            $q = (float)($_POST['qty'][$it['product_id']] ?? $it['qty']);
-            if ($q <= 0) $qtyOk = false;
+            $q = round((float)($_POST['qty'][$it['product_id']] ?? $it['qty']), 2);
+            if (!is_finite($q) || $q < 0.01 || $q > 100000) $qtyOk = false;
             $items[$i]['qty'] = $q;
         }
         $subtotal += $items[$i]['qty'] * $items[$i]['harga_satuan'];
     }
 
-    if ($alamat === '' || $kota === '' || $metodeBayar === '') {
+    if (!hash_equals((string)($_SESSION['checkout_nonce'] ?? ''), (string)($_POST['order_nonce'] ?? ''))) {
+        $errorMsg = 'Formulir ini sudah diproses atau kedaluwarsa. Muat ulang halaman keranjang/produk lalu ulangi.';
+    } elseif ($alamat === '' || $kota === '' || $metodeBayar === '') {
         $errorMsg = 'Harap lengkapi alamat pengiriman, kota, dan metode pembayaran.';
     } elseif (!$qtyOk) {
         $errorMsg = 'Jumlah barang tidak valid.';
@@ -98,7 +100,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
                     [$newOrderId, $it['product_id'], $it['request_id'], $it['nama_barang'], $it['qty'], $it['satuan'],
                      $it['harga_satuan'], $it['qty'] * $it['harga_satuan'], (string)$it['spesifikasi']]);
                 if ($it['request_id']) {
-                    dbRun("UPDATE product_requests SET status = 'ordered' WHERE id = ?", [$it['request_id']]);
+                    // atomik: hanya satu pesanan yang bisa memakai satu request yang disetujui
+                    $st = dbRun("UPDATE product_requests SET status = 'ordered' WHERE id = ? AND customer_id = ? AND status = 'approved'", [$it['request_id'], $cId]);
+                    if (mysqli_stmt_affected_rows($st) !== 1) throw new DomainException('Request barang ini sudah diproses di pesanan lain.');
                 }
             }
             if ($sourceType === 'cart') {
@@ -107,15 +111,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_order'])) {
             mysqli_commit($conn);
         } catch (Throwable $e) {
             mysqli_rollback($conn);
-            $errorMsg = 'Gagal memproses pesanan: ' . $e->getMessage();
+            $errorMsg = $e instanceof DomainException ? $e->getMessage() : safeError($e, 'Gagal memproses pesanan. Silakan coba lagi.');
         }
 
         if ($errorMsg === '') {
+            unset($_SESSION['checkout_nonce']);
             notify('admin', null, "Pesanan baru {$nomorOrder} dari {$currentCust['nama']} (" . count($items) . " barang, Rp " . number_format($total, 0, ',', '.') . ").", 'admin-orders.php');
             header("Location: customer-order-detail.php?id={$newOrderId}&pay=1");
             exit;
         }
     }
+}
+if (empty($_SESSION['checkout_nonce'])) {
+    $_SESSION['checkout_nonce'] = bin2hex(random_bytes(16));
 }
 $subtotalAll = 0.0;
 foreach ($items as $it) $subtotalAll += $it['qty'] * $it['harga_satuan'];
@@ -264,6 +272,7 @@ foreach ($items as $it) $subtotalAll += $it['qty'] * $it['harga_satuan'];
         
         <!-- ITEM PREVIEW (satu atau banyak barang) -->
         <input type="hidden" name="cart" value="<?= $cartMode ? '1' : '' ?>">
+        <input type="hidden" name="order_nonce" value="<?= h($_SESSION['checkout_nonce']) ?>">
         <div style="font-size: 11px; font-weight: 700; color: var(--teal-600); text-transform: uppercase; margin-bottom: 6px;">
           <?= $sourceType === 'request' ? '📋 Dari Request yang Disetujui' : ($sourceType === 'cart' ? '🛒 Dari Keranjang (' . count($items) . ' barang)' : '🛍️ Produk Katalog') ?>
         </div>

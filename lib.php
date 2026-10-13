@@ -185,3 +185,30 @@ function throttleHit(string $scope, string $ident): void {
 function throttleClear(string $scope, string $ident): void {
     dbRun("DELETE FROM login_attempts WHERE scope = ? AND ident = ? AND ip = ?", [$scope, strtolower(substr($ident, 0, 191)), clientIp()]);
 }
+
+// ---------- Helper keamanan tambahan ----------
+
+/** True bila request datang dari mesin lokal / domain pengembangan (localhost, *.test, *.local). */
+function isLocalRequest(): bool {
+    $host = strtolower(preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
+    return in_array($host, ['localhost', '127.0.0.1', '[::1]', '::1'], true)
+        || (bool)preg_match('/\.(test|local|localhost)$/', $host);
+}
+
+/**
+ * Base URL aplikasi untuk tautan di email. Pakai 'base_url' dari config.php (wajib di production);
+ * bila kosong, hanya diizinkan untuk request lokal. Header Host dari klien TIDAK dipercaya.
+ */
+function appBaseUrl(): string {
+    $cfg = rtrim((string)appConfig('base_url', ''), '/');
+    if ($cfg !== '') return $cfg;
+    if (!isLocalRequest()) return '';
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    return $scheme . '://' . $_SERVER['HTTP_HOST'] . rtrim(str_replace("\\", '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
+}
+
+/** Catat error detail ke log server; tampilkan pesan generik (detail hanya jika 'debug' => true di config.php). */
+function safeError(Throwable $e, string $generic = 'Terjadi kesalahan. Coba lagi atau hubungi admin.'): string {
+    error_log('[tidar] ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
+    return appConfig('debug', false) ? $generic . ' (' . $e->getMessage() . ')' : $generic;
+}

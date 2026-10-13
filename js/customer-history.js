@@ -659,11 +659,11 @@ function renderNameList() {
   const filtered = names.filter(n => n.toLowerCase().includes(currentSearch));
   listEl.innerHTML = filtered.map(name => {
     const initials = getInitials(name);
-    return `<div class="customer-item ${selCustomer === name ? 'active' : ''}" onclick="selectCustomer('${name}')" title="${name}">
+    return `<div class="customer-item ${selCustomer === name ? 'active' : ''}" data-name="${esc(name)}" onclick="selectCustomer(this.dataset.name)" title="${esc(name)}">
       <div class="code-row">
         <span class="badge-code">${initials}</span>
       </div>
-      <div class="name">${name}</div>
+      <div class="name">${esc(name)}</div>
     </div>`;
   }).join('');
 }
@@ -696,7 +696,7 @@ function renderDetailPanel() {
     <div class="history-header">
       <div class="cus-identity-card" style="margin-bottom:0">
         <div style="flex:1">
-          <h2 style="margin:0">${selCustomer === 'all' ? 'Semua Transaksi' : selCustomer}</h2>
+          <h2 style="margin:0">${selCustomer === 'all' ? 'Semua Transaksi' : esc(selCustomer)}</h2>
           <p style="margin:4px 0 0">Pencarian data riwayat terpadu</p>
         </div>
         <div style="display:flex; gap:10px">
@@ -711,7 +711,7 @@ function renderDetailPanel() {
           <label style="display:block; font-size:9px; font-weight:800; color:var(--navy-400); margin-bottom:4px">MASTER CUSTOMER</label>
           <select class="excel-input" style="border:1px solid #ddd; border-radius:6px; height:35px" onchange="selCustomer=this.value; renderDetailPanel(); renderNameList()">
             <option value="all">-- Semua Customer --</option>
-            ${allNames.map(n => `<option value="${n}" ${selCustomer===n ? 'selected':''}>${n}</option>`).join('')}
+            ${allNames.map(n => `<option value="${esc(n)}" ${selCustomer===n ? 'selected':''}>${esc(n)}</option>`).join('')}
           </select>
         </div>
         <div style="width:150px">
@@ -773,7 +773,7 @@ function renderUnifiedTable(data) {
         
         if (isSalesItemCol) {
           if (idx === 18) {
-            tds.push(`<td>${sItem ? sItem.barang : ''}</td>`);
+            tds.push(`<td>${esc(sItem ? sItem.barang : '')}</td>`);
           } else if (idx === 20) {
             tds.push(`<td class="text-right">${sItem && sItem.qty ? fmt.number(sItem.qty) : ''}</td>`);
           } else if (idx === 21) {
@@ -783,7 +783,7 @@ function renderUnifiedTable(data) {
           }
         } else if (isPurchItemCol) {
           if (idx === 9) {
-            tds.push(`<td>${pItem ? pItem.barang : ''}</td>`);
+            tds.push(`<td>${esc(pItem ? pItem.barang : '')}</td>`);
           } else if (idx === 30) {
             tds.push(`<td class="text-right">${pItem && pItem.qty_ppn ? fmt.number(pItem.qty_ppn) : ''}</td>`);
           } else if (idx === 31) {
@@ -809,7 +809,7 @@ function renderUnifiedTable(data) {
             } else {
               const val = l.data[idx] || '';
               const isNum = [10,19,23,24,25,26,28,29,33,34,35,36,38,39,40,43,44,45].includes(idx);
-              tds.push(`<td class="${isNum ? 'text-right' : ''}"${rowspanAttr}>${isNum ? fmt.number(val) : val}</td>`);
+              tds.push(`<td class="${isNum ? 'text-right' : ''}"${rowspanAttr}>${isNum ? fmt.number(val) : esc(val)}</td>`);
             }
           }
         }
@@ -817,7 +817,7 @@ function renderUnifiedTable(data) {
       
       if (isFirst) {
         const rowspanAttr = rowSpanCount > 1 ? ` rowspan="${rowSpanCount}"` : '';
-        tds.push(`<td class="td-actions"${rowspanAttr} style="position:sticky; right:0; background:white; z-index:25"><button class="btn btn-icon btn-sm" onclick="editLedger('${l.id}')">✏️</button><button class="btn btn-icon btn-sm" style="color:var(--red-500)" onclick="deleteLedger('${l.id}')">🗑️</button></td>`);
+        tds.push(`<td class="td-actions"${rowspanAttr} style="position:sticky; right:0; background:white; z-index:25"><button class="btn btn-icon btn-sm" onclick="editLedger('${esc(l.id)}')">✏️</button><button class="btn btn-icon btn-sm" style="color:var(--red-500)" onclick="deleteLedger('${esc(l.id)}')">🗑️</button></td>`);
       }
       
       trs.push(`<tr>${tds.join('')}</tr>`);

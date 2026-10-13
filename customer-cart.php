@@ -13,7 +13,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $act = $_POST['act'] ?? '';
     if ($act === 'update') {
         foreach (($_POST['qty'] ?? []) as $pid => $q) {
-            $q = (float)$q;
+            $q = round((float)$q, 2);
+            if (!is_finite($q) || $q > 100000) continue;
             if ($q <= 0) {
                 dbRun("DELETE FROM cart_items WHERE customer_id = ? AND product_id = ?", [$cId, (string)$pid]);
             } else {

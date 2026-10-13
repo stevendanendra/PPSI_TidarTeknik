@@ -60,7 +60,7 @@ function getCatIcon($cat) {
       <button 
         type="button" 
         class="wishlist-btn-corner <?= $isWish ? 'active' : '' ?>" 
-        onclick="toggleWishlist(this, '<?= $product['id'] ?>')"
+        onclick="toggleWishlist(this, '<?= h($product['id']) ?>')"
         title="<?= $isWish ? 'Hapus dari Wishlist' : 'Simpan ke Wishlist' ?>"
         style="top: 14px; left: 14px; width: 38px; height: 38px; font-size: 18px;"
       >
@@ -69,7 +69,7 @@ function getCatIcon($cat) {
     </div>
 
     <div style="display: flex; gap: 10px; justify-content: center;">
-      <button type="button" class="btn btn-ghost" onclick="toggleWishlist(document.querySelector('.wishlist-btn-corner'), '<?= $product['id'] ?>')" style="flex:1">
+      <button type="button" class="btn btn-ghost" onclick="toggleWishlist(document.querySelector('.wishlist-btn-corner'), '<?= h($product['id']) ?>')" style="flex:1">
         ❤️ <?= $isWish ? 'Di Wishlist' : 'Tambah ke Wishlist' ?>
       </button>
     </div>

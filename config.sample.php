@@ -22,6 +22,12 @@ return [
     // Kosongkan untuk memakai folder uploads/ di dalam proyek (dilindungi .htaccess, hanya dibuka lewat download.php).
     // 'upload_dir' => __DIR__ . '/../storage/tidar-uploads',
 
+    // WAJIB di production: alamat publik aplikasi untuk tautan di email reset password (tanpa slash di akhir).
+    // Header Host dari pengunjung tidak dipercaya. Contoh: 'https://tidarteknik.my.id'
+    // 'base_url' => 'https://tidarteknik.my.id',
+    // Tampilkan detail error teknis (hanya saat pengembangan). Default false: detail hanya ke log server.
+    // 'debug' => false,
+
     'db_host' => 'localhost',
     'db_user' => 'root',
     'db_pass' => '',

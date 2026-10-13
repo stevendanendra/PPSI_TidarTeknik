@@ -22,11 +22,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($cust) {
             $token = bin2hex(random_bytes(24));
             dbRun("UPDATE customers SET reset_token_hash = ?, reset_expires = (NOW() + INTERVAL 1 HOUR) WHERE id = ?", [hash('sha256', $token), $cust['id']]);
-            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
-            $link = $scheme . '://' . $_SERVER['HTTP_HOST'] . $dir . '/customer-reset-password.php?token=' . $token;
-            @mail($email, 'Reset Password Portal CV. Tidar Teknik', "Halo {$cust['nama']},\n\nKlik tautan berikut untuk mengatur ulang password (berlaku 1 jam):\n$link\n\nAbaikan email ini bila Anda tidak memintanya.", 'From: ' . appConfig('mail_from', 'noreply@tidarteknik.my.id'));
-            if (appConfig('show_reset_link', false)) $devLink = $link;
+            $base = appBaseUrl();
+            if ($base !== '') {
+                $link = $base . '/customer-reset-password.php?token=' . $token;
+                @mail($email, 'Reset Password Portal CV. Tidar Teknik', "Halo {$cust['nama']},
+
+Klik tautan berikut untuk mengatur ulang password (berlaku 1 jam):
+$link
+
+Abaikan email ini bila Anda tidak memintanya.", 'From: ' . appConfig('mail_from', 'noreply@tidarteknik.my.id'));
+                // Tautan di layar hanya untuk pengembangan lokal (tidak pernah di server publik)
+                if (appConfig('show_reset_link', false) && isLocalRequest()) $devLink = $link;
+            } else {
+                error_log('[tidar] base_url belum diatur di config.php; email reset tidak dikirim.');
+            }
             notify('admin', null, "Permintaan reset password dari {$cust['nama']} ($email).", 'admin-customers.php');
         }
         // Respons sama baik email terdaftar atau tidak (cegah penebakan akun)

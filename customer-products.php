@@ -159,7 +159,7 @@ function getCategoryIcon($cat) {
           <button 
             type="button" 
             class="wishlist-btn-corner <?= $isWish ? 'active' : '' ?>" 
-            onclick="toggleWishlist(this, '<?= $p['id'] ?>')"
+            onclick="toggleWishlist(this, '<?= h($p['id']) ?>')"
             title="<?= $isWish ? 'Hapus dari Wishlist' : 'Simpan ke Wishlist' ?>"
           >
             <?= $isWish ? '❤️' : '🤍' ?>

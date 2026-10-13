@@ -16,7 +16,7 @@ $errorPass      = '';
 
 // 1. Handle Update Profil
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_profile'])) {
-    $nama    = trim($_POST['nama'] ?? '');
+    $nama    = (string)$currentCust['nama']; // nama hanya bisa diubah admin (dipakai sebagai kunci dokumen)
     $pic     = trim($_POST['pic'] ?? '');
     $telepon = trim($_POST['telepon'] ?? '');
     $kota    = trim($_POST['kota'] ?? '');
@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_password'])) {
 
         <div class="form-group">
           <label class="form-label required">Nama Perusahaan / Pribadi</label>
-          <input type="text" name="nama" class="form-control" value="<?= htmlspecialchars($currentCust['nama']) ?>" required>
+          <input type="text" name="nama" class="form-control" value="<?= htmlspecialchars($currentCust['nama']) ?>" readonly style="background:var(--navy-50)" title="Nama perusahaan diubah oleh admin">
         </div>
 
         <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">

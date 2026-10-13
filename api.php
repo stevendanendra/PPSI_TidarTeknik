@@ -17,6 +17,14 @@ mysqli_set_charset($conn, 'utf8mb4');
 
 $action = $_GET['action'] ?? '';
 
+// Aksi yang mengubah data hanya boleh lewat POST (tidak bisa dipicu lewat link/GET)
+if ((strpos($action, 'save_') === 0 || strpos($action, 'penawaran_') === 0 || $action === 'read_notifications')
+    && ($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
+    exit;
+}
+
 /* ---------- helper ---------- */
 
 /** Prepared statement: bind $params dengan tipe otomatis (i/d/s), execute, kembalikan stmt. */
@@ -92,7 +100,7 @@ function transaction(mysqli $conn, callable $fn): void {
         mysqli_commit($conn);
     } catch (Throwable $e) {
         mysqli_rollback($conn);
-        respond(['status' => 'error', 'message' => $e->getMessage()], 500);
+        respond(['status' => 'error', 'message' => safeError($e, 'Gagal menyimpan data. Periksa isian lalu coba lagi.')], 500);
     }
     echo json_encode(['status' => 'success']);
 }
@@ -383,9 +391,10 @@ switch ($action) {
         $custId = $pn['customer_id'];
         if (!$custId) {
             // Cocokkan nama customer ke akun portal
-            $cust = dbRow("SELECT id FROM customers WHERE LOWER(nama) = LOWER(?) AND email IS NOT NULL AND email <> '' LIMIT 1", [$pn['customer']]);
-            if (!$cust) respond(['status' => 'error', 'message' => 'Customer "' . $pn['customer'] . '" belum punya akun portal (nama harus sama dengan data customer).'], 422);
-            $custId = $cust['id'];
+            $cands = fetchAll($conn, "SELECT id FROM customers WHERE LOWER(nama) = LOWER(?) AND email IS NOT NULL AND email <> ''", [$pn['customer']]);
+            if (count($cands) === 0) respond(['status' => 'error', 'message' => 'Customer "' . $pn['customer'] . '" belum punya akun portal (nama harus sama dengan data customer).'], 422);
+            if (count($cands) > 1) respond(['status' => 'error', 'message' => 'Ada lebih dari satu akun customer bernama "' . $pn['customer'] . '". Buat nama unik di menu Akun Customer sebelum mengirim penawaran.'], 422);
+            $custId = $cands[0]['id'];
         }
         run($conn, "UPDATE penawaran SET customer_id = ?, status = 'Dikirim', alasan_respon = NULL, responded_at = NULL WHERE id = ?", [$custId, $pn['id']]);
         notify('customer', $custId, "Penawaran {$pn['nomor']} (V{$pn['versi']}) menunggu keputusan Anda.", 'customer-quotations.php');
@@ -432,6 +441,6 @@ switch ($action) {
         break;
 }
 } catch (Throwable $e) {
-    respond(['status' => 'error', 'message' => $e->getMessage()], 500);
+    respond(['status' => 'error', 'message' => safeError($e, 'Terjadi kesalahan di server.')], 500);
 }
 ?>

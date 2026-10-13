@@ -29,13 +29,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $err = 'Lampirkan minimal satu foto atau video bukti.';
     } elseif (count($files) > 6) {
         $err = 'Maksimal 6 file.';
+    } elseif (throttleBlocked('upload', $cId, 10, 60)) {
+        $err = 'Terlalu banyak pengajuan. Coba lagi dalam 1 jam.';
     } else {
+        throttleHit('upload', $cId);
         $saved = [];
         foreach ($files as $f) {
             $mime = $f['tmp_name'] ? (new finfo(FILEINFO_MIME_TYPE))->file($f['tmp_name']) : '';
             $isVideo = str_starts_with((string)$mime, 'video/');
             [$path, $upErr] = saveUpload($f, 'retur', MIME_IMAGE + MIME_VIDEO, $isVideo ? 30 * 1048576 : 5 * 1048576);
-            if ($upErr) { $err = $f['name'] . ': ' . $upErr; break; }
+            if ($upErr) {
+                $err = $f['name'] . ': ' . $upErr;
+                foreach ($saved as [$orphan]) { @unlink(uploadDir() . '/' . $orphan); } // jangan tinggalkan file yatim
+                break;
+            }
             $saved[] = [$path, $isVideo ? 'video' : 'foto'];
         }
         if ($err === '') {
