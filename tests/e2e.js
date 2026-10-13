@@ -230,7 +230,7 @@ async function sectionC(b) {
         return res.json();
       }, q);
       const inCart = sql(`select coalesce(sum(qty),0) from cart_items where customer_id='${aid()}' and product_id='PRD-006'`);
-      assert(r.status !== 'success' || (+inCart >= 1 && +inCart < 100000), `qty ${q} diterima: ${JSON.stringify(r)} cart=${inCart}`);
+      assert(r.status === 'error' && +inCart === 0, `qty ${q} diterima: ${JSON.stringify(r)} cart=${inCart}`);
     }
     // via checkout langsung
     await ca.goto(BASE + 'customer-cart.php');
