@@ -6,33 +6,10 @@
 
 require_once 'auth.php';
 requireLogin();
-require_once 'db.php';
+require_once 'lib.php';
 
 $success = '';
 $error = '';
-
-// Handle update status pesanan / pembayaran
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_order'])) {
-    $orderId    = mysqli_real_escape_string($conn, $_POST['order_id'] ?? '');
-    $statBayar  = mysqli_real_escape_string($conn, $_POST['status_pembayaran'] ?? '');
-    $statPesan  = mysqli_real_escape_string($conn, $_POST['status_pesanan'] ?? '');
-    $noResi     = mysqli_real_escape_string($conn, $_POST['no_resi'] ?? '');
-
-    if (empty($orderId)) {
-        $error = 'Order ID tidak valid.';
-    } else {
-        $q = "UPDATE orders SET 
-                status_pembayaran = '$statBayar',
-                status_pesanan = '$statPesan',
-                no_resi = '$noResi'
-              WHERE id = '$orderId'";
-        if (mysqli_query($conn, $q)) {
-            $success = 'Status pesanan berhasil diperbarui.';
-        } else {
-            $error = 'Gagal memperbarui pesanan: ' . mysqli_error($conn);
-        }
-    }
-}
 
 // Filter status
 $filterStatus = trim($_GET['status'] ?? '');
@@ -126,8 +103,8 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
     <header class="topbar">
       <button class="hamburger-btn" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Buka menu">☰</button>
       <div>
-        <div class="topbar-title">Pesanan Masuk Customer (Fase 2)</div>
-        <div class="topbar-subtitle">Verifikasi bukti pembayaran &amp; perbarui status proses/pengiriman barang</div>
+        <div class="topbar-title">Pesanan Masuk Customer</div>
+        <div class="topbar-subtitle">Verifikasi pembayaran, buat PO per supplier &amp; perbarui pengiriman</div>
       </div>
       <div class="topbar-actions">
         <a href="index.php" class="btn btn-ghost">← Kembali ke Dashboard</a>
@@ -220,13 +197,12 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
                       </div>
                     </td>
                     <td>
-                      <?php if ($o['status_pembayaran'] === 'terverifikasi'): ?>
-                        <span class="badge badge-green">🟢 Lunas / Terverifikasi</span>
-                      <?php elseif ($o['status_pembayaran'] === 'sudah_bayar'): ?>
-                        <span class="badge badge-blue">🔵 Butuh Verifikasi</span>
-                      <?php else: ?>
-                        <span class="badge badge-amber">🟡 Belum Bayar</span>
-                      <?php endif; ?>
+                      <?php
+                        $payMap = ['paid' => ['badge-green', '🟢 Paid (Lunas)'], 'terverifikasi' => ['badge-green', '🟢 Lunas'],
+                                   'dp' => ['badge-blue', '🔵 DP'], 'term' => ['badge-blue', '🔵 Term'], 'partial' => ['badge-blue', '🔵 Partial'],
+                                   'sudah_bayar' => ['badge-blue', '🔵 Butuh Verifikasi'], 'dibatalkan' => ['badge-red', '🔴 Batal']];
+                        [$pc, $pl] = $payMap[$o['status_pembayaran']] ?? ['badge-amber', '🟡 Belum Bayar']; ?>
+                      <span class="badge <?= $pc ?>"><?= $pl ?></span>
                       <div style="font-size: 11px; color: var(--navy-500); margin-top: 2px;">
                         <?= htmlspecialchars($o['metode_pembayaran']) ?>
                       </div>
@@ -250,13 +226,7 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
                       <?php endif; ?>
                     </td>
                     <td>
-                      <button 
-                        type="button" 
-                        class="btn btn-sm btn-primary"
-                        onclick="openUpdateOrderModal(<?= htmlspecialchars(json_encode($o), ENT_QUOTES, 'UTF-8') ?>)"
-                      >
-                        ⚙️ Kelola Status
-                      </button>
+                      <a href="admin-order-detail.php?id=<?= urlencode($o['id']) ?>" class="btn btn-sm btn-primary">⚙️ Kelola</a>
                     </td>
                   </tr>
                 <?php endforeach; ?>
@@ -269,77 +239,6 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
     </main>
   </div>
 
-  <!-- MODAL KELOLA STATUS ORDER -->
-  <div id="modal-order" style="display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 20px;">
-    <div style="background: #fff; width: 100%; max-width: 500px; border-radius: var(--radius); overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,.2); animation: modalIn .2s ease;">
-      <div style="padding: 16px 20px; border-bottom: 1px solid var(--navy-100); display: flex; justify-content: space-between; align-items: center; background: var(--navy-50);">
-        <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: var(--navy-800);" id="modal-order-title">Kelola Status Pesanan</h3>
-        <button type="button" onclick="closeOrderModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--navy-400);">✕</button>
-      </div>
-
-      <form method="POST" action="admin-orders.php" style="padding: 20px;">
-        <input type="hidden" name="action_order" value="1">
-        <input type="hidden" name="order_id" id="modal-order-id">
-
-        <div style="background: var(--navy-50); border: 1px solid var(--navy-200); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 16px; font-size: 12.5px;">
-          <div style="font-weight: 700; color: var(--navy-900);" id="modal-order-cust">-</div>
-          <div style="color: var(--navy-600); margin-top: 2px;" id="modal-order-total">-</div>
-          <div style="color: var(--navy-500); margin-top: 2px;" id="modal-order-alamat">-</div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label required">Status Pembayaran</label>
-          <select name="status_pembayaran" id="modal-order-stat-bayar" class="form-control" required>
-            <option value="menunggu_pembayaran">🟡 Menunggu Pembayaran</option>
-            <option value="sudah_bayar">🔵 Sudah Bayar (Konfirmasi Customer)</option>
-            <option value="terverifikasi">🟢 Terverifikasi / Lunas</option>
-            <option value="dibatalkan">🔴 Pembayaran Dibatalkan</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label required">Status Pesanan &amp; Pengiriman</label>
-          <select name="status_pesanan" id="modal-order-stat-pesan" class="form-control" required>
-            <option value="pending">⏳ Pending (Menunggu Diproses)</option>
-            <option value="diproses">⚙️ Diproses (Packing / Pengadaan Supplier)</option>
-            <option value="dikirim">🚚 Dikirim (Dalam Perjalanan)</option>
-            <option value="selesai">✅ Selesai (Diterima Customer)</option>
-            <option value="dibatalkan">❌ Pesanan Dibatalkan</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Nomor Resi / Surat Jalan</label>
-          <input type="text" name="no_resi" id="modal-order-resi" class="form-control" placeholder="Contoh: TT-SJ-2026/04/001 atau No Resi Ekspedisi">
-        </div>
-
-        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-          <button type="button" class="btn btn-ghost" onclick="closeOrderModal()">Batal</button>
-          <button type="submit" class="btn btn-primary">💾 Simpan Status</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <script src="js/app.js?v=<?= time() ?>"></script>
-  <script>
-    function openUpdateOrderModal(ord) {
-      document.getElementById('modal-order-id').value = ord.id;
-      document.getElementById('modal-order-title').textContent = 'Kelola Pesanan: ' + ord.nomor_order;
-      document.getElementById('modal-order-cust').textContent = 'Customer: ' + ord.nama_customer;
-      document.getElementById('modal-order-total').textContent = 'Total: Rp ' + parseFloat(ord.total).toLocaleString('id-ID') + ' (' + ord.metode_pembayaran + ')';
-      document.getElementById('modal-order-alamat').textContent = 'Tujuan: ' + ord.kota_pengiriman + ' • ' + ord.ekspedisi;
-
-      document.getElementById('modal-order-stat-bayar').value = ord.status_pembayaran;
-      document.getElementById('modal-order-stat-pesan').value = ord.status_pesanan;
-      document.getElementById('modal-order-resi').value = ord.no_resi || '';
-
-      document.getElementById('modal-order').style.display = 'flex';
-    }
-
-    function closeOrderModal() {
-      document.getElementById('modal-order').style.display = 'none';
-    }
-  </script>
 </body>
 </html>

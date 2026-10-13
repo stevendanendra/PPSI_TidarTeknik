@@ -28,7 +28,6 @@ if (!$res || mysqli_num_rows($res) == 0) {
 }
 
 $product = mysqli_fetch_assoc($res);
-$isReady = $product['stok'] > 0;
 
 // Cek wishlist
 $wCheck = mysqli_query($conn, "SELECT id FROM customer_wishlist WHERE customer_id = '{$currentCust['id']}' AND product_id = '{$product['id']}' LIMIT 1");
@@ -50,7 +49,7 @@ function getCatIcon($cat) {
   </a>
 </div>
 
-<div style="display: grid; grid-template-columns: 380px 1fr; gap: 28px; align-items: start;">
+<div class="cust-split cust-split-left">
   <!-- SISI KIRI: GAMBAR / THUMBNAIL -->
   <div class="card" style="padding: 24px; text-align: center;">
     <div style="height: 280px; background: linear-gradient(135deg, var(--navy-50), var(--navy-100)); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; border: 1px solid var(--navy-200); position: relative; margin-bottom: 16px;">
@@ -99,15 +98,6 @@ function getCatIcon($cat) {
           </div>
         </div>
 
-        <?php if ($isReady): ?>
-          <span class="stock-tag stock-available" style="position: static; font-size: 12px; padding: 6px 14px;">
-            ✅ Stok Ready: <?= $product['stok'] ?> <?= htmlspecialchars($product['satuan']) ?>
-          </span>
-        <?php else: ?>
-          <span class="stock-tag stock-empty" style="position: static; font-size: 12px; padding: 6px 14px;">
-            ⚠️ Stok Saat Ini Kosong
-          </span>
-        <?php endif; ?>
       </div>
 
       <!-- PRICE CARD -->
@@ -115,7 +105,7 @@ function getCatIcon($cat) {
         <div>
           <div style="font-size: 11.5px; color: var(--navy-500); font-weight: 600; text-transform: uppercase;">Harga Satuan</div>
           <div style="font-size: 26px; font-weight: 800; color: var(--navy-900); margin-top: 2px;">
-            Rp <?= number_format($product['harga'], 0, ',', '.') ?>
+            <?= h(hargaLabel($product)) ?>
             <span style="font-size: 13px; font-weight: 500; color: var(--navy-500);">/ <?= htmlspecialchars($product['satuan']) ?></span>
           </div>
         </div>
@@ -149,30 +139,18 @@ function getCatIcon($cat) {
 
       <!-- ACTION BUTTONS ACCORDING TO SITEMAP 3.2 & 3.3 -->
       <div style="padding-top: 16px; border-top: 1px solid var(--navy-200);">
-        <?php if ($isReady): ?>
-          <!-- FASE 2: Checkout langsung -->
-          <div style="display: flex; gap: 14px; align-items: center;">
-            <a href="customer-checkout.php?product_id=<?= urlencode($product['id']) ?>" class="btn btn-success" style="padding: 13px 28px; font-size: 14.5px; font-weight: 700; flex: 1; justify-content: center; box-shadow: 0 4px 14px rgba(16,185,129,.3);">
-              🛒 Beli Sekarang (Lanjut Checkout)
-            </a>
-          </div>
-          <div style="font-size: 11.5px; color: var(--navy-400); margin-top: 8px;">
-            Stok tersedia untuk pengiriman cepat oleh CV. Tidar Teknik.
-          </div>
-        <?php else: ?>
-          <!-- FASE 1: Request barang jika stok kosong -->
-          <div style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.3); border-radius: var(--radius-sm); padding: 18px; margin-bottom: 14px;">
-            <div style="font-weight: 700; color: var(--am-600); font-size: 14px; margin-bottom: 4px;">
-              ⚠️ Barang ini sedang tidak tersedia di stok ready
-            </div>
-            <p style="font-size: 12.5px; color: var(--navy-600); margin: 0 0 14px 0;">
-              Sesuai alur bisnis dropship CV. Tidar Teknik, Anda dapat mengajukan permintaan ketersediaan dan penawaran harga khusus kepada admin kami. Admin akan segera memeriksa ketersediaan ke supplier dan menentukan harga untuk Anda.
-            </p>
-            <a href="customer-request.php?product_id=<?= urlencode($product['id']) ?>" class="btn btn-warning" style="padding: 12px 24px; font-weight: 700; font-size: 14px; width: 100%; justify-content: center;">
-              📋 Ajukan Permintaan Barang Ini (Request ke Admin)
-            </a>
-          </div>
-        <?php endif; ?>
+        <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+          <input type="number" id="cart-qty" class="form-control" value="1" min="1" step="1" style="width: 90px;" aria-label="Jumlah">
+          <button type="button" class="btn btn-success" style="padding: 13px 28px; font-size: 14.5px; font-weight: 700; flex: 1; justify-content: center; box-shadow: 0 4px 14px rgba(16,185,129,.3);" onclick="addToCart('<?= h($product['id']) ?>', document.getElementById('cart-qty').value)">
+            🛒 Masukkan ke Keranjang
+          </button>
+          <a href="customer-request.php?product_id=<?= urlencode($product['id']) ?>" class="btn btn-warning" title="Minta harga/penawaran khusus untuk barang ini">
+            📋 Minta Penawaran
+          </a>
+        </div>
+        <div style="font-size: 11.5px; color: var(--navy-400); margin-top: 8px;">
+          Ketersediaan dipastikan admin ke supplier setelah pesanan dibuat.
+        </div>
       </div>
     </div>
   </div>

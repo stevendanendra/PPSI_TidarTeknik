@@ -4,6 +4,9 @@
  * CV. Tidar Teknik
  */
 
+// Buffer output supaya halaman bisa redirect (header Location) setelah header HTML tercetak
+ob_start();
+
 require_once __DIR__ . '/customer-auth.php';
 require_once __DIR__ . '/lib.php';
 requireCustomerLogin();

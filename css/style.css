@@ -1916,3 +1916,17 @@ tbody td {
 @media (max-width: 768px) {
   .dash-grid-2 { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Detail pesanan admin */
+.order-detail-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 992px) { .order-detail-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Customer portal: kolom utama + panel samping, satu kolom di layar kecil */
+.cust-split { display: grid; gap: 24px; align-items: start; }
+.cust-split > * { min-width: 0; }
+.cust-split-right { grid-template-columns: minmax(0, 1fr) 380px; }
+.cust-split-right.wide { grid-template-columns: minmax(0, 1fr) 420px; }
+.cust-split-left { grid-template-columns: 380px minmax(0, 1fr); gap: 28px; }
+@media (max-width: 992px) {
+  .cust-split-right, .cust-split-right.wide, .cust-split-left { grid-template-columns: minmax(0, 1fr); }
+}

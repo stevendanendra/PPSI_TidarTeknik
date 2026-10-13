@@ -6,7 +6,7 @@
 
 require_once 'auth.php';
 requireLogin();
-require_once 'db.php';
+require_once 'lib.php';
 
 $success = '';
 $error = '';
@@ -22,60 +22,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nama        = trim($_POST['nama'] ?? '');
     $kategori    = trim($_POST['kategori'] ?? '');
     $harga       = (float)($_POST['harga'] ?? 0);
+    $hargaMin    = ($_POST['harga_min'] ?? '') !== '' ? (float)$_POST['harga_min'] : null;
+    $hargaMax    = ($_POST['harga_max'] ?? '') !== '' ? (float)$_POST['harga_max'] : null;
     $stok        = (int)($_POST['stok'] ?? 0);
     $satuan      = trim($_POST['satuan'] ?? 'PCS');
     $supplier_id = trim($_POST['supplier_id'] ?? '');
     $spesifikasi = trim($_POST['spesifikasi'] ?? '');
     $deskripsi   = trim($_POST['deskripsi'] ?? '');
 
-    if (empty($nama) || empty($kategori)) {
+    if ($nama === '' || $kategori === '') {
         $error = 'Nama produk dan kategori wajib diisi.';
+    } elseif ($hargaMin !== null && $hargaMax !== null && $hargaMin > $hargaMax) {
+        $error = 'Harga minimum tidak boleh lebih besar dari harga maksimum.';
     } else {
-        $cleanKode = mysqli_real_escape_string($conn, $kode);
-        $cleanNama = mysqli_real_escape_string($conn, $nama);
-        $cleanKat  = mysqli_real_escape_string($conn, $kategori);
-        $cleanSat  = mysqli_real_escape_string($conn, $satuan);
-        $cleanSpec = mysqli_real_escape_string($conn, $spesifikasi);
-        $cleanDesk = mysqli_real_escape_string($conn, $deskripsi);
-        $cleanSup  = !empty($supplier_id) ? "'" . mysqli_real_escape_string($conn, $supplier_id) . "'" : "NULL";
-
-        if (!empty($editId)) {
-            // Edit
-            $cEditId = mysqli_real_escape_string($conn, $editId);
-            $q = "UPDATE products SET 
-                    kode = '$cleanKode',
-                    nama = '$cleanNama',
-                    kategori = '$cleanKat',
-                    harga = $harga,
-                    stok = $stok,
-                    satuan = '$cleanSat',
-                    supplier_id = $cleanSup,
-                    spesifikasi = '$cleanSpec',
-                    deskripsi = '$cleanDesk'
-                  WHERE id = '$cEditId'";
-            if (mysqli_query($conn, $q)) {
+        $supVal = $supplier_id !== '' ? $supplier_id : null;
+        try {
+            if ($editId !== '') {
+                dbRun("UPDATE products SET kode = ?, nama = ?, kategori = ?, harga = ?, harga_min = ?, harga_max = ?, stok = ?, satuan = ?,
+                              supplier_id = ?, spesifikasi = ?, deskripsi = ? WHERE id = ?",
+                    [$kode, $nama, $kategori, $harga, $hargaMin, $hargaMax, $stok, $satuan, $supVal, $spesifikasi, $deskripsi, $editId]);
+                if ($supVal) {
+                    // supplier utama ikut menjadi kandidat final
+                    dbRun("UPDATE product_suppliers SET is_final = 0 WHERE product_id = ?", [$editId]);
+                    dbRun("INSERT INTO product_suppliers (product_id, supplier_id, is_final) VALUES (?, ?, 1)
+                           ON DUPLICATE KEY UPDATE is_final = 1", [$editId, $supVal]);
+                }
                 $success = 'Produk berhasil diperbarui.';
             } else {
-                $error = 'Gagal memperbarui produk: ' . mysqli_error($conn);
-            }
-        } else {
-            // Tambah baru
-            $newId = 'PRD-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 6));
-            $q = "INSERT INTO products (id, kode, nama, kategori, harga, stok, satuan, supplier_id, spesifikasi, deskripsi) 
-                  VALUES ('$newId', '$cleanKode', '$cleanNama', '$cleanKat', $harga, $stok, '$cleanSat', $cleanSup, '$cleanSpec', '$cleanDesk')";
-            if (mysqli_query($conn, $q)) {
+                $newId = 'PRD-' . strtoupper(substr(md5(uniqid((string)mt_rand(), true)), 0, 6));
+                dbRun("INSERT INTO products (id, kode, nama, kategori, harga, harga_min, harga_max, stok, satuan, supplier_id, spesifikasi, deskripsi)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [$newId, $kode, $nama, $kategori, $harga, $hargaMin, $hargaMax, $stok, $satuan, $supVal, $spesifikasi, $deskripsi]);
+                if ($supVal) {
+                    dbRun("INSERT INTO product_suppliers (product_id, supplier_id, is_final) VALUES (?, ?, 1)", [$newId, $supVal]);
+                }
                 $success = 'Produk baru berhasil ditambahkan ke katalog.';
-            } else {
-                $error = 'Gagal menambahkan produk: ' . mysqli_error($conn);
             }
+        } catch (Throwable $e) {
+            $error = 'Gagal menyimpan produk: ' . $e->getMessage();
         }
     }
 }
 
 // Handle Hapus Produk
 if (isset($_GET['delete'])) {
-    $delId = mysqli_real_escape_string($conn, $_GET['delete']);
-    mysqli_query($conn, "DELETE FROM products WHERE id = '$delId'");
+    dbRun("DELETE FROM products WHERE id = ?", [trim($_GET['delete'])]);
     header('Location: admin-products.php?deleted=1');
     exit;
 }
@@ -86,18 +77,19 @@ if (isset($_GET['deleted'])) {
 
 // Ambil daftar produk
 $search = trim($_GET['q'] ?? '');
-$where = ["1=1"];
-if (!empty($search)) {
-    $s = mysqli_real_escape_string($conn, $search);
-    $where[] = "(p.nama LIKE '%$s%' OR p.kode LIKE '%$s%' OR p.kategori LIKE '%$s%')";
+if ($search !== '') {
+    $like = '%' . $search . '%';
+    $products = dbRows("SELECT p.*, s.nama AS nama_supplier,
+                               (SELECT COUNT(*) FROM product_suppliers ps WHERE ps.product_id = p.id) AS jml_kandidat
+                        FROM products p LEFT JOIN suppliers s ON p.supplier_id = s.id
+                        WHERE p.nama LIKE ? OR p.kode LIKE ? OR p.kategori LIKE ?
+                        ORDER BY p.created_at DESC", [$like, $like, $like]);
+} else {
+    $products = dbRows("SELECT p.*, s.nama AS nama_supplier,
+                               (SELECT COUNT(*) FROM product_suppliers ps WHERE ps.product_id = p.id) AS jml_kandidat
+                        FROM products p LEFT JOIN suppliers s ON p.supplier_id = s.id
+                        ORDER BY p.created_at DESC");
 }
-$whereSql = implode(" AND ", $where);
-$resProds = mysqli_query($conn, "SELECT p.*, s.nama AS nama_supplier 
-                                FROM products p 
-                                LEFT JOIN suppliers s ON p.supplier_id = s.id 
-                                WHERE $whereSql 
-                                ORDER BY p.created_at DESC");
-$products = mysqli_fetch_all($resProds, MYSQLI_ASSOC);
 
 // Hitung request pending untuk badge sidebar
 $cntPendingRes = mysqli_query($conn, "SELECT COUNT(*) FROM product_requests WHERE status = 'pending'");
@@ -214,7 +206,7 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
                   <tr>
                     <th>Produk &amp; Kategori</th>
                     <th>Harga</th>
-                    <th>Stok</th>
+                    <th>Stok Internal</th>
                     <th>Supplier Rekanan</th>
                     <th>Aksi</th>
                   </tr>
@@ -229,18 +221,19 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
                         </div>
                       </td>
                       <td>
-                        <strong>Rp <?= number_format($p['harga'], 0, ',', '.') ?></strong>
+                        <strong><?= htmlspecialchars(hargaLabel($p)) ?></strong>
                         <div style="font-size: 11px; color: var(--navy-400);">/<?= htmlspecialchars($p['satuan']) ?></div>
                       </td>
                       <td>
                         <?php if ($p['stok'] > 0): ?>
                           <span class="badge badge-green">Ready: <?= $p['stok'] ?> <?= htmlspecialchars($p['satuan']) ?></span>
                         <?php else: ?>
-                          <span class="badge badge-red">Stok: 0 (Request)</span>
+                          <span class="badge badge-gray">0</span>
                         <?php endif; ?>
                       </td>
                       <td style="font-size: 12px; color: var(--navy-600);">
                         <?= htmlspecialchars($p['nama_supplier'] ?: '-') ?>
+                        <div style="font-size: 11px; color: var(--navy-400);"><?= (int)$p['jml_kandidat'] ?> kandidat supplier</div>
                       </td>
                       <td class="td-actions">
                         <button 
@@ -297,8 +290,19 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
                   <input type="number" name="harga" id="prod-harga" class="form-control" placeholder="1500000" step="any" required>
                 </div>
                 <div class="form-group">
-                  <label class="form-label required">Stok Ready</label>
-                  <input type="number" name="stok" id="prod-stok" class="form-control" placeholder="10" min="0" value="0" required>
+                  <label class="form-label">Stok Internal (tidak tampil ke customer)</label>
+                  <input type="number" name="stok" id="prod-stok" class="form-control" placeholder="0" min="0" value="0">
+                </div>
+              </div>
+
+              <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="form-group">
+                  <label class="form-label">Rentang Harga: Minimum (Rp)</label>
+                  <input type="number" name="harga_min" id="prod-harga-min" class="form-control" placeholder="Opsional" step="any" min="0">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Rentang Harga: Maksimum (Rp)</label>
+                  <input type="number" name="harga_max" id="prod-harga-max" class="form-control" placeholder="Opsional" step="any" min="0">
                 </div>
               </div>
 
@@ -349,6 +353,8 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
       document.getElementById('prod-kategori').value = p.kategori;
       document.getElementById('prod-harga').value = p.harga;
       document.getElementById('prod-stok').value = p.stok;
+      document.getElementById('prod-harga-min').value = p.harga_min || '';
+      document.getElementById('prod-harga-max').value = p.harga_max || '';
       document.getElementById('prod-satuan').value = p.satuan;
       document.getElementById('prod-sup-id').value = p.supplier_id || '';
       document.getElementById('prod-specs').value = p.spesifikasi || '';

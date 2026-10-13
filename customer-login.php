@@ -430,15 +430,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         🚀 Masuk ke Portal
       </button>
 
-      <!-- Demo helper info -->
-      <div class="demo-box">
-        <div>
-          <strong>Akun Demo:</strong><br>
-          customer@tidarteknik.com
-        </div>
-        <button type="button" class="btn-fill-demo" id="btn-fill-demo">Isi Cepat</button>
-      </div>
-
       <div class="card-footer">
         <a href="customer-forgot-password.php">Lupa password?</a><br>
         <?php if ($allowRegister): ?>Belum punya akun? <a href="customer-register.php">Daftar sekarang</a><?php else: ?>Akun customer dibuat oleh admin CV. Tidar Teknik.<?php endif; ?><br>
@@ -458,12 +449,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       passVisible = !passVisible;
       passInput.type   = passVisible ? 'text' : 'password';
       toggleBtn.textContent = passVisible ? '🙈' : '👁️';
-    });
-
-    // Quick Fill Demo
-    document.getElementById('btn-fill-demo')?.addEventListener('click', () => {
-      document.getElementById('email').value = 'customer@tidarteknik.com';
-      document.getElementById('password').value = 'customer123';
     });
   </script>
 </body>

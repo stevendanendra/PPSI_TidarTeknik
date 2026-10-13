@@ -126,3 +126,29 @@ function autoCompleteOrders(): void {
         notify('admin', null, "Pesanan {$r['nomor_order']} otomatis selesai.", 'admin-orders.php');
     }
 }
+
+/** Label harga katalog: rentang bila harga_min/harga_max diisi, selain itu harga tunggal. */
+function hargaLabel(array $p): string {
+    $fmt = fn($n) => 'Rp ' . number_format((float)$n, 0, ',', '.');
+    $min = isset($p['harga_min']) ? (float)$p['harga_min'] : 0.0;
+    $max = isset($p['harga_max']) ? (float)$p['harga_max'] : 0.0;
+    if ($min > 0 && $max > $min) return $fmt($min) . ' – ' . $fmt($max);
+    return $fmt($p['harga'] ?? 0);
+}
+
+/** Pastikan item keranjang/produk valid: kembalikan produk aktif atau null. */
+function activeProduct(string $id): ?array {
+    return dbRow("SELECT * FROM products WHERE id = ? AND is_active = 1", [$id]);
+}
+
+/** Ubah struktur $_FILES multi-file ($_FILES['x']['name'][]) jadi daftar file tunggal. */
+function normalizeFiles(array $f): array {
+    if (!isset($f['name'])) return [];
+    if (!is_array($f['name'])) return [$f];
+    $out = [];
+    foreach ($f['name'] as $i => $_) {
+        $out[] = ['name' => $f['name'][$i], 'type' => $f['type'][$i], 'tmp_name' => $f['tmp_name'][$i],
+                  'error' => $f['error'][$i], 'size' => $f['size'][$i]];
+    }
+    return $out;
+}

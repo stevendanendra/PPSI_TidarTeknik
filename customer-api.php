@@ -36,6 +36,19 @@ switch ($action) {
         }
         break;
 
+    case 'add_to_cart':
+        $pid = trim($_POST['product_id'] ?? '');
+        $qty = max(1, (int)($_POST['qty'] ?? 1));
+        if (!activeProduct($pid)) {
+            echo json_encode(['status' => 'error', 'message' => 'Produk tidak ditemukan']);
+            break;
+        }
+        dbRun("INSERT INTO cart_items (customer_id, product_id, qty) VALUES (?, ?, ?)
+               ON DUPLICATE KEY UPDATE qty = qty + VALUES(qty)", [$cId, $pid, (float)$qty]);
+        $cnt = (int)dbRow("SELECT COUNT(*) AS c FROM cart_items WHERE customer_id = ?", [$cId])['c'];
+        echo json_encode(['status' => 'success', 'count' => $cnt]);
+        break;
+
     case 'notifications':
         $items = dbRows("SELECT id, pesan, link, is_read, created_at FROM notifications WHERE audience = 'customer' AND customer_id = ? ORDER BY id DESC LIMIT 30", [$cId]);
         $unread = (int)dbRow("SELECT COUNT(*) AS c FROM notifications WHERE audience = 'customer' AND customer_id = ? AND is_read = 0", [$cId])['c'];
@@ -44,6 +57,11 @@ switch ($action) {
 
     case 'notifications_read':
         dbRun("UPDATE notifications SET is_read = 1 WHERE audience = 'customer' AND customer_id = ?", [$cId]);
+        echo json_encode(['status' => 'success']);
+        break;
+
+    case 'tutorial_reset':
+        dbRun("UPDATE customers SET tutorial_seen = 0 WHERE id = ?", [$cId]);
         echo json_encode(['status' => 'success']);
         break;
 

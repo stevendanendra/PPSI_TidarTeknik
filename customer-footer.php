@@ -32,6 +32,20 @@
       }
     }
 
+    // Keranjang
+    async function addToCart(productId, qty = 1) {
+      try {
+        const fd = new FormData();
+        fd.append('action', 'add_to_cart');
+        fd.append('product_id', productId);
+        fd.append('qty', qty);
+        const res = await fetch('customer-api.php', { method: 'POST', body: fd });
+        const d = await res.json();
+        if (d.status === 'success') showToast('Ditambahkan ke keranjang (' + d.count + ' jenis barang)', 'success');
+        else showToast(d.message || 'Gagal menambah ke keranjang', 'error');
+      } catch (e) { showToast('Gagal menambah ke keranjang', 'error'); }
+    }
+
     // Notifikasi internal (polling tiap 15 detik)
     (function () {
       const bell = document.getElementById('notif-bell');

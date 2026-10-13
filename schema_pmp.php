@@ -23,7 +23,7 @@ function pmpAddColumn(mysqli $conn, string $table, string $col, string $definiti
 function ensurePmpSchema(mysqli $conn): void {
     mysqli_query($conn, "CREATE TABLE IF NOT EXISTS app_meta (k VARCHAR(50) PRIMARY KEY, v VARCHAR(100) NOT NULL)");
     $r = mysqli_query($conn, "SELECT v FROM app_meta WHERE k = 'pmp_schema'");
-    if ($r && ($row = mysqli_fetch_row($r)) && (int)$row[0] >= 1) {
+    if ($r && ($row = mysqli_fetch_row($r)) && (int)$row[0] >= 2) {
         return;
     }
 
@@ -72,6 +72,10 @@ function ensurePmpSchema(mysqli $conn): void {
     pmpAddColumn($conn, 'orders', 'dikirim_at', "DATETIME NULL");
     pmpAddColumn($conn, 'orders', 'tanggal_terima', "DATETIME NULL");
     pmpAddColumn($conn, 'orders', 'alasan_batal', "TEXT NULL");
+
+    // --- Item order terhubung ke PO supplier (satu order bisa dipecah ke beberapa PO) ---
+    pmpAddColumn($conn, 'order_items', 'po_id', "VARCHAR(50) NULL");
+    pmpAddColumn($conn, 'order_items', 'supplier_id', "VARCHAR(50) NULL");
 
     // --- PO terhubung ke order & supplier (satu order bisa banyak PO) ---
     pmpAddColumn($conn, 'po', 'order_id', "VARCHAR(50) NULL");
@@ -135,5 +139,5 @@ function ensurePmpSchema(mysqli $conn): void {
         KEY idx_notif (audience, customer_id, is_read)
     )");
 
-    mysqli_query($conn, "REPLACE INTO app_meta (k, v) VALUES ('pmp_schema', '1')");
+    mysqli_query($conn, "REPLACE INTO app_meta (k, v) VALUES ('pmp_schema', '2')");
 }
