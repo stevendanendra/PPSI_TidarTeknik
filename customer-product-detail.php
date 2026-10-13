@@ -15,23 +15,19 @@ if (empty($id)) {
     exit;
 }
 
-$cleanId = mysqli_real_escape_string($conn, $id);
-$res = mysqli_query($conn, "SELECT p.*, s.nama AS nama_supplier 
-                           FROM products p 
-                           LEFT JOIN suppliers s ON p.supplier_id = s.id 
-                           WHERE p.id = '$cleanId' AND p.is_active = 1 LIMIT 1");
+$product = dbRow("SELECT p.*, s.nama AS nama_supplier
+                  FROM products p
+                  LEFT JOIN suppliers s ON p.supplier_id = s.id
+                  WHERE p.id = ? AND p.is_active = 1 LIMIT 1", [$id]);
 
-if (!$res || mysqli_num_rows($res) == 0) {
+if (!$product) {
     echo "<div class='alert alert-error'>Produk tidak ditemukan atau telah dinonaktifkan. <a href='customer-products.php'>Kembali ke katalog</a></div>";
     require_once 'customer-footer.php';
     exit;
 }
 
-$product = mysqli_fetch_assoc($res);
-
 // Cek wishlist
-$wCheck = mysqli_query($conn, "SELECT id FROM customer_wishlist WHERE customer_id = '{$currentCust['id']}' AND product_id = '{$product['id']}' LIMIT 1");
-$isWish = mysqli_num_rows($wCheck) > 0;
+$isWish = (bool)dbRow("SELECT id FROM customer_wishlist WHERE customer_id = ? AND product_id = ? LIMIT 1", [$currentCust['id'], $product['id']]);
 
 // Helper icon kategori
 function getCatIcon($cat) {

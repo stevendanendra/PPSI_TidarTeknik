@@ -49,8 +49,8 @@ adminHead('Retur Barang', 'Tinjau bukti foto/video, setujui atau tolak, lalu sel
       <div style="margin-top:6px"><?= nl2br(h($r['alasan'])) ?></div>
       <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
         <?php foreach ($media as $m): ?>
-          <?php if ($m['tipe'] === 'video'): ?><video src="<?= h($m['file']) ?>" controls style="height:110px;border-radius:6px"></video>
-          <?php else: ?><a href="<?= h($m['file']) ?>" target="_blank" rel="noopener"><img src="<?= h($m['file']) ?>" alt="Bukti retur" style="height:110px;border-radius:6px;border:1px solid var(--navy-200)"></a><?php endif; ?>
+          <?php if ($m['tipe'] === 'video'): ?><video src="download.php?t=return&id=<?= (int)$m['id'] ?>" controls style="height:110px;border-radius:6px"></video>
+          <?php else: ?><a href="download.php?t=return&id=<?= (int)$m['id'] ?>" target="_blank" rel="noopener"><img src="download.php?t=return&id=<?= (int)$m['id'] ?>" alt="Bukti retur" style="height:110px;border-radius:6px;border:1px solid var(--navy-200)"></a><?php endif; ?>
         <?php endforeach; ?>
       </div>
       <?php if ($r['catatan_admin']): ?><div style="margin-top:6px"><b>Catatan admin:</b> <?= h($r['catatan_admin']) ?></div><?php endif; ?>

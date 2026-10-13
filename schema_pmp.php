@@ -23,7 +23,7 @@ function pmpAddColumn(mysqli $conn, string $table, string $col, string $definiti
 function ensurePmpSchema(mysqli $conn): void {
     mysqli_query($conn, "CREATE TABLE IF NOT EXISTS app_meta (k VARCHAR(50) PRIMARY KEY, v VARCHAR(100) NOT NULL)");
     $r = mysqli_query($conn, "SELECT v FROM app_meta WHERE k = 'pmp_schema'");
-    if ($r && ($row = mysqli_fetch_row($r)) && (int)$row[0] >= 2) {
+    if ($r && ($row = mysqli_fetch_row($r)) && (int)$row[0] >= 3) {
         return;
     }
 
@@ -139,5 +139,15 @@ function ensurePmpSchema(mysqli $conn): void {
         KEY idx_notif (audience, customer_id, is_read)
     )");
 
-    mysqli_query($conn, "REPLACE INTO app_meta (k, v) VALUES ('pmp_schema', '2')");
+    // --- Pembatas percobaan login / permintaan reset password ---
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS login_attempts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        scope VARCHAR(20) NOT NULL,
+        ident VARCHAR(191) NOT NULL,
+        ip VARCHAR(45) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_attempt (scope, ident, ip, created_at)
+    )");
+
+    mysqli_query($conn, "REPLACE INTO app_meta (k, v) VALUES ('pmp_schema', '3')");
 }

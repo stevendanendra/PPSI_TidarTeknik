@@ -2,6 +2,31 @@
  * app.js — Shared utilities for CV. Tidar Teknik
  */
 
+// ===== KEAMANAN =====
+// Semua fetch non-GET otomatis membawa token CSRF (dari <meta name="csrf-token"> yang disisipkan server).
+(function () {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  const token = meta ? meta.content : '';
+  const nativeFetch = window.fetch;
+  window.fetch = function (input, init) {
+    init = init || {};
+    const method = String(init.method || (input && input.method) || 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD' && token) {
+      const headers = new Headers(init.headers || (input && input.headers) || {});
+      headers.set('X-CSRF-Token', token);
+      init.headers = headers;
+    }
+    return nativeFetch.call(this, input, init);
+  };
+})();
+
+/** Escape teks sebelum disisipkan ke HTML (innerHTML / atribut) agar data pengguna tidak dieksekusi. */
+function esc(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // ===== FORMAT HELPERS =====
 const fmt = {
   /** Format number as Rupiah e.g. Rp 4.000.000 */
@@ -420,7 +445,7 @@ function showToast(msg, type = 'info') {
   const toast = document.createElement('div');
   const icons = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️' };
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${msg}</span>`;
+  toast.innerHTML = `<span>${icons[type] || 'ℹ️'}</span><span>${esc(msg)}</span>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.style.animation = 'toastIn .2s ease reverse';
@@ -456,8 +481,8 @@ function setupAutocomplete(inputEl, listEl, getDataFn, onSelect) {
     listEl.style.display = 'block';
     listEl.innerHTML = items.map((d, i) =>
       `<div class="autocomplete-item" data-idx="${i}">
-        <strong>${d.nama}</strong>
-        <div class="ac-sub">${d.kode ? '[' + d.kode + ']' : ''} ${d.kota || ''}</div>
+        <strong>${esc(d.nama)}</strong>
+        <div class="ac-sub">${d.kode ? '[' + d.kode + ']' : ''} ${esc(d.kota || '')}</div>
       </div>`
     ).join('');
     listEl.querySelectorAll('.autocomplete-item').forEach((el, i) => {

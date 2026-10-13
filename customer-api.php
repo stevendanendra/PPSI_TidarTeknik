@@ -20,18 +20,17 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 switch ($action) {
     case 'toggle_wishlist':
-        $pId = mysqli_real_escape_string($conn, $_POST['product_id'] ?? '');
-        if (empty($pId)) {
+        $pId = trim($_POST['product_id'] ?? '');
+        if ($pId === '' || !activeProduct($pId)) {
             echo json_encode(['status' => 'error', 'message' => 'Product ID is required']);
             exit;
         }
 
-        $check = mysqli_query($conn, "SELECT id FROM customer_wishlist WHERE customer_id = '$cId' AND product_id = '$pId' LIMIT 1");
-        if (mysqli_num_rows($check) > 0) {
-            mysqli_query($conn, "DELETE FROM customer_wishlist WHERE customer_id = '$cId' AND product_id = '$pId'");
+        if (dbRow("SELECT id FROM customer_wishlist WHERE customer_id = ? AND product_id = ? LIMIT 1", [$cId, $pId])) {
+            dbRun("DELETE FROM customer_wishlist WHERE customer_id = ? AND product_id = ?", [$cId, $pId]);
             echo json_encode(['status' => 'success', 'is_wishlist' => false]);
         } else {
-            mysqli_query($conn, "INSERT INTO customer_wishlist (customer_id, product_id) VALUES ('$cId', '$pId')");
+            dbRun("INSERT INTO customer_wishlist (customer_id, product_id) VALUES (?, ?)", [$cId, $pId]);
             echo json_encode(['status' => 'success', 'is_wishlist' => true]);
         }
         break;

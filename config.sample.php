@@ -18,6 +18,10 @@ return [
     // Tampilkan tautan reset password di layar (khusus dev/tanpa email server). Matikan di produksi.
     'show_reset_link' => false,
 
+    // Folder penyimpanan bukti bayar & bukti retur. Disarankan DI LUAR web root (mis. 'C:/laragon/storage/tidar').
+    // Kosongkan untuk memakai folder uploads/ di dalam proyek (dilindungi .htaccess, hanya dibuka lewat download.php).
+    // 'upload_dir' => __DIR__ . '/../storage/tidar-uploads',
+
     'db_host' => 'localhost',
     'db_user' => 'root',
     'db_pass' => '',

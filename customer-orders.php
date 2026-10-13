@@ -11,27 +11,25 @@ require_once 'customer-header.php';
 $cId = $currentCust['id'];
 $statusFilt = trim($_GET['status'] ?? '');
 
-$where = ["o.customer_id = '$cId'"];
+$where = ["o.customer_id = ?"];
+$params = [$cId];
 if (!empty($statusFilt)) {
-    $sf = mysqli_real_escape_string($conn, $statusFilt);
-    if ($sf === 'unpaid') {
-        $where[] = "o.status_pembayaran = 'menunggu_pembayaran'";
-    } else {
-        $where[] = "o.status_pesanan = '$sf'";
+    if ($statusFilt === 'unpaid') {
+        $where[] = "o.status_pembayaran IN ('menunggu_pembayaran', 'dp', 'term', 'partial')";
+    } elseif (in_array($statusFilt, ['pending', 'diproses', 'dikirim', 'selesai', 'dibatalkan'], true)) {
+        $where[] = "o.status_pesanan = ?";
+        $params[] = $statusFilt;
     }
 }
 $whereSql = implode(" AND ", $where);
 
-$sql = "SELECT * FROM orders o WHERE $whereSql ORDER BY o.created_at DESC";
-$res = mysqli_query($conn, $sql);
-$orders = mysqli_fetch_all($res, MYSQLI_ASSOC);
+$orders = dbRows("SELECT * FROM orders o WHERE $whereSql ORDER BY o.created_at DESC", $params);
 
 // Load items per order
 foreach ($orders as &$ord) {
-    $oid = $ord['id'];
-    $iRes = mysqli_query($conn, "SELECT * FROM order_items WHERE order_id = '$oid'");
-    $ord['items'] = mysqli_fetch_all($iRes, MYSQLI_ASSOC);
+    $ord['items'] = dbRows("SELECT * FROM order_items WHERE order_id = ?", [$ord['id']]);
 }
+unset($ord);
 ?>
 
 <!-- FILTER STATUS TABS -->

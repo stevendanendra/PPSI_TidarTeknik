@@ -170,7 +170,7 @@ include 'db.php';
 
     .sh-label {
       font-size: 11px;
-      color: var(--navy-400);
+      color: #a8b5c7;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: .06em;
@@ -299,7 +299,7 @@ include 'db.php';
         <div style="display:flex;gap:8px">
           <a href="nota.php" class="btn btn-danger btn-sm">Cek Nota</a>
           <a href="po.php" class="btn btn-warning btn-sm"
-            style="background:#f59e0b;border-color:#d97706;color:white">Cek PO</a>
+            style="background:#f59e0b;border-color:#d97706;color:#0f172a">Cek PO</a>
         </div>
       </div>
 
@@ -314,7 +314,7 @@ include 'db.php';
         </div>
         <div style="display:flex;gap:8px">
           <a href="nota.php?filter_status=Sementara" class="btn btn-warning btn-sm"
-            style="background:#f59e0b;border-color:#d97706;color:white">Cek Nota Sementara</a>
+            style="background:#f59e0b;border-color:#d97706;color:#0f172a">Cek Nota Sementara</a>
         </div>
       </div>
 
@@ -558,8 +558,8 @@ include 'db.php';
         ptbody.innerHTML = `<tr><td colspan="4"><div class="empty-state" style="padding:20px"><div class="empty-icon" style="font-size:28px">📋</div><p>Belum ada PO. <a href="po.php?new=1" style="color:var(--teal-500)">Buat PO Baru →</a></p></div></td></tr>`;
       } else {
         ptbody.innerHTML = recentPO.map(p => `<tr class="recent-row">
-      <td class="td-mono" style="font-size:11.5px">${p.nomor}</td>
-      <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.supplier}</td>
+      <td class="td-mono" style="font-size:11.5px">${esc(p.nomor)}</td>
+      <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.supplier)}</td>
       <td class="td-amount">${fmt.rupiah(getPoTotal(p))}</td>
       <td>
         <div class="row-actions-dash">
@@ -581,8 +581,8 @@ include 'db.php';
         ntbody.innerHTML = `<tr><td colspan="4"><div class="empty-state" style="padding:20px"><div class="empty-icon" style="font-size:28px">🧾</div><p>Belum ada Nota. <a href="nota.php?new=1" style="color:var(--teal-500)">Buat Nota Baru →</a></p></div></td></tr>`;
       } else {
         ntbody.innerHTML = recentNota.map(n => `<tr class="recent-row">
-      <td class="td-mono" style="font-size:11px">${n.nomor}</td>
-      <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.customer}</td>
+      <td class="td-mono" style="font-size:11px">${esc(n.nomor)}</td>
+      <td style="font-size:12px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.customer)}</td>
       <td class="td-amount">${fmt.rupiah(getNotaGT(n))}</td>
       <td>
         <div class="row-actions-dash">

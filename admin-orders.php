@@ -14,31 +14,28 @@ $error = '';
 // Filter status
 $filterStatus = trim($_GET['status'] ?? '');
 $where = ["1=1"];
-if (!empty($filterStatus)) {
-    $fs = mysqli_real_escape_string($conn, $filterStatus);
-    $where[] = "o.status_pesanan = '$fs'";
+$params = [];
+if (in_array($filterStatus, ['pending', 'diproses', 'dikirim', 'selesai', 'dibatalkan'], true)) {
+    $where[] = "o.status_pesanan = ?";
+    $params[] = $filterStatus;
 }
 $whereSql = implode(" AND ", $where);
 
 // Ambil orders
-$sql = "SELECT o.*, c.nama AS nama_customer, c.telepon AS telp_customer, c.email AS email_customer 
-        FROM orders o 
-        JOIN customers c ON o.customer_id = c.id 
-        WHERE $whereSql 
-        ORDER BY o.created_at DESC";
-$resOrders = mysqli_query($conn, $sql);
-$orders = mysqli_fetch_all($resOrders, MYSQLI_ASSOC);
+$orders = dbRows("SELECT o.*, c.nama AS nama_customer, c.telepon AS telp_customer, c.email AS email_customer
+                  FROM orders o
+                  JOIN customers c ON o.customer_id = c.id
+                  WHERE $whereSql
+                  ORDER BY o.created_at DESC", $params);
 
 // Load items per order
 foreach ($orders as &$ord) {
-    $oid = $ord['id'];
-    $iRes = mysqli_query($conn, "SELECT * FROM order_items WHERE order_id = '$oid'");
-    $ord['items'] = mysqli_fetch_all($iRes, MYSQLI_ASSOC);
+    $ord['items'] = dbRows("SELECT * FROM order_items WHERE order_id = ?", [$ord['id']]);
 }
+unset($ord);
 
 // Hitung request pending untuk badge
-$cntPendingRes = mysqli_query($conn, "SELECT COUNT(*) FROM product_requests WHERE status = 'pending'");
-$totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
+$totalPending = (int)dbRow("SELECT COUNT(*) AS c FROM product_requests WHERE status = 'pending'")['c'];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -95,7 +92,7 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
     </nav>
     <div class="sidebar-footer">
       <div style="margin-bottom:8px">📞 0822 2525 5251 &nbsp;|&nbsp; tidarteknik@gmail.com</div>
-      <a href="logout.php" style="display:flex;align-items:center;gap:6px;justify-content:center;padding:7px 12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#ef4444;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s" id="btn-logout">🚪 Keluar</a>
+      <a href="logout.php" style="display:flex;align-items:center;gap:6px;justify-content:center;padding:7px 12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#fca5a5;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s" id="btn-logout">🚪 Keluar</a>
     </div>
   </aside>
 

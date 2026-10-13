@@ -71,9 +71,14 @@ function nextDocNumber(string $table, string $prefix): string {
     return sprintf('%s/%04d/TT/%s/%s', $prefix, $max + 1, romanMonth((int)date('n')), $year);
 }
 
+/** Folder penyimpanan upload. Disarankan di luar web root (set 'upload_dir' di config.php). */
+function uploadDir(): string {
+    return rtrim((string)appConfig('upload_dir', __DIR__ . '/uploads'), "/\\");
+}
+
 /**
- * Simpan file upload ke /uploads/<sub>/ setelah validasi tipe & ukuran.
- * Kembalikan path relatif (uploads/...) atau string error bila gagal: [path|null, error|null].
+ * Simpan file upload ke <upload_dir>/<sub>/ setelah validasi tipe (berdasarkan isi file) & ukuran.
+ * Kembalikan [path relatif "sub/nama.ext" | null, pesan error | null]. File hanya bisa dibuka lewat download.php.
  */
 function saveUpload(array $file, string $sub, array $allowedMime, int $maxBytes): array {
     if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return [null, null];
@@ -81,11 +86,11 @@ function saveUpload(array $file, string $sub, array $allowedMime, int $maxBytes)
     if ($file['size'] > $maxBytes) return [null, 'Ukuran file melebihi ' . round($maxBytes / 1048576) . ' MB.'];
     $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
     if (!isset($allowedMime[$mime])) return [null, 'Tipe file tidak diizinkan.'];
-    $dir = __DIR__ . '/uploads/' . $sub;
+    $dir = uploadDir() . '/' . $sub;
     if (!is_dir($dir) && !mkdir($dir, 0775, true)) return [null, 'Folder upload tidak bisa dibuat.'];
-    $name = bin2hex(random_bytes(10)) . '.' . $allowedMime[$mime];
+    $name = bin2hex(random_bytes(16)) . '.' . $allowedMime[$mime];
     if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $name)) return [null, 'File gagal disimpan.'];
-    return ['uploads/' . $sub . '/' . $name, null];
+    return [$sub . '/' . $name, null];
 }
 
 const MIME_IMAGE = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
@@ -151,4 +156,32 @@ function normalizeFiles(array $f): array {
                   'error' => $f['error'][$i], 'size' => $f['size'][$i]];
     }
     return $out;
+}
+
+// ---------- Pembatas percobaan (anti brute-force) ----------
+
+function clientIp(): string {
+    return substr((string)($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'), 0, 45);
+}
+
+/**
+ * True bila kombinasi (scope, ident, IP) sudah gagal >= $max kali dalam $minutes menit,
+ * atau IP yang sama sudah gagal >= $max * 4 kali pada scope itu (mencegah ganti-ganti username).
+ */
+function throttleBlocked(string $scope, string $ident, int $max = 5, int $minutes = 15): bool {
+    $ident = strtolower(substr($ident, 0, 191));
+    $ip = clientIp();
+    $per = dbRow("SELECT COUNT(*) AS c FROM login_attempts WHERE scope = ? AND ident = ? AND ip = ? AND created_at > (NOW() - INTERVAL " . (int)$minutes . " MINUTE)", [$scope, $ident, $ip]);
+    if ((int)($per['c'] ?? 0) >= $max) return true;
+    $all = dbRow("SELECT COUNT(*) AS c FROM login_attempts WHERE scope = ? AND ip = ? AND created_at > (NOW() - INTERVAL " . (int)$minutes . " MINUTE)", [$scope, $ip]);
+    return (int)($all['c'] ?? 0) >= $max * 4;
+}
+
+function throttleHit(string $scope, string $ident): void {
+    dbRun("INSERT INTO login_attempts (scope, ident, ip) VALUES (?, ?, ?)", [$scope, strtolower(substr($ident, 0, 191)), clientIp()]);
+    dbRun("DELETE FROM login_attempts WHERE created_at < (NOW() - INTERVAL 1 DAY)");
+}
+
+function throttleClear(string $scope, string $ident): void {
+    dbRun("DELETE FROM login_attempts WHERE scope = ? AND ident = ? AND ip = ?", [$scope, strtolower(substr($ident, 0, 191)), clientIp()]);
 }

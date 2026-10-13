@@ -17,15 +17,12 @@ if (empty($orderId)) {
     exit;
 }
 
-$cleanOId = mysqli_real_escape_string($conn, $orderId);
-$oRes = mysqli_query($conn, "SELECT * FROM orders WHERE id = '$cleanOId' AND customer_id = '$cId' LIMIT 1");
-if (!$oRes || mysqli_num_rows($oRes) == 0) {
+$order = dbRow("SELECT * FROM orders WHERE id = ? AND customer_id = ? LIMIT 1", [$orderId, $cId]);
+if (!$order) {
     echo "<div class='alert alert-error'>Pesanan tidak ditemukan. <a href='customer-orders.php'>Kembali ke riwayat pesanan</a></div>";
     require_once 'customer-footer.php';
     exit;
 }
-
-$order = mysqli_fetch_assoc($oRes);
 
 // Handle konfirmasi pembayaran oleh customer
 $alertMsg = '';
@@ -82,8 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $orderOpen) {
 }
 
 // Load items & pembayaran
-$iRes = mysqli_query($conn, "SELECT * FROM order_items WHERE order_id = '$cleanOId'");
-$items = mysqli_fetch_all($iRes, MYSQLI_ASSOC);
+$items = dbRows("SELECT * FROM order_items WHERE order_id = ?", [$orderId]);
 $payments = dbRows("SELECT * FROM payments WHERE order_id = ? ORDER BY id DESC", [$orderId]);
 $sisaTagihan = max(0.0, (float)$order['total'] - (float)$order['total_dibayar']);
 $returnCount = (int)dbRow("SELECT COUNT(*) AS c FROM returns WHERE order_id = ?", [$orderId])['c'];
@@ -352,7 +348,7 @@ $step5 = ($statusPesan === 'selesai'); // Selesai
                 <?php else: ?><span class="badge badge-amber" style="font-size:10px">Menunggu verifikasi</span><?php endif; ?>
                 <div style="color: var(--navy-500); font-size: 11px;">
                   <?= h(date('d/m/Y H:i', strtotime($pm['created_at']))) ?>
-                  <?php if ($pm['bukti_file']): ?> • <a href="<?= h($pm['bukti_file']) ?>" target="_blank" rel="noopener">Lihat bukti</a><?php endif; ?>
+                  <?php if ($pm['bukti_file']): ?> • <a href="download.php?t=payment&id=<?= (int)$pm['id'] ?>" target="_blank" rel="noopener">Lihat bukti</a><?php endif; ?>
                 </div>
                 <?php if ($pm['catatan_admin']): ?><div style="font-size: 11px; color: var(--navy-600);">Admin: <?= h($pm['catatan_admin']) ?></div><?php endif; ?>
               </div>

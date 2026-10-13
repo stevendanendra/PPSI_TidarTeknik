@@ -27,11 +27,8 @@ $cntReq = 0;
 $cntOrder = 0;
 if ($currentCust) {
     $cId = $currentCust['id'];
-    $rRes = mysqli_query($conn, "SELECT COUNT(*) FROM product_requests WHERE customer_id = '$cId' AND status IN ('pending', 'approved')");
-    if ($rRes) $cntReq = (int)mysqli_fetch_row($rRes)[0];
-
-    $oRes = mysqli_query($conn, "SELECT COUNT(*) FROM orders WHERE customer_id = '$cId' AND status_pesanan NOT IN ('selesai', 'dibatalkan')");
-    if ($oRes) $cntOrder = (int)mysqli_fetch_row($oRes)[0];
+    $cntReq   = (int)dbRow("SELECT COUNT(*) AS c FROM product_requests WHERE customer_id = ? AND status IN ('pending', 'approved')", [$cId])['c'];
+    $cntOrder = (int)dbRow("SELECT COUNT(*) AS c FROM orders WHERE customer_id = ? AND status_pesanan NOT IN ('selesai', 'dibatalkan')", [$cId])['c'];
 
     $cntCart  = (int)(dbRow("SELECT COUNT(*) AS c FROM cart_items WHERE customer_id = ?", [$cId])['c'] ?? 0);
     $cntQuote = (int)(dbRow("SELECT COUNT(*) AS c FROM penawaran WHERE customer_id = ? AND status = 'Dikirim'", [$cId])['c'] ?? 0);

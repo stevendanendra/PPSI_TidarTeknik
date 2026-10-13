@@ -1930,3 +1930,38 @@ tbody td {
 @media (max-width: 992px) {
   .cust-split-right, .cust-split-right.wide, .cust-split-left { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ===== Kontras teks (WCAG AA >= 4.5:1) =====
+   Hanya warna teks/tombol/badge yang disesuaikan; tema dan layout tetap. */
+.main-wrap { --navy-400: #64748b; } /* teks sekunder di area konten (latar terang); sidebar gelap tetap memakai nilai asli */
+.badge-blue { color: #0369a1; }
+.badge-green { color: #047857; }
+.badge-amber, .badge-warning { color: #92400e; }
+.badge-danger { color: #b91c1c; }
+.btn-primary { background: linear-gradient(135deg, #075985, #0369a1); }
+.btn-success { background: linear-gradient(135deg, #065f46, #047857); }
+.btn-warning { color: #0f172a; }
+.btn-danger { color: #b91c1c; }
+.btn-danger:hover { background: #b91c1c; color: #fff; }
+.tab-btn.active { color: #0369a1; border-bottom-color: #0369a1; }
+:root { --em-600: #047857; --teal-600: #0369a1; --am-600: #b45309; --red-500: #dc2626; --red-600: #b91c1c; }
+.btn.btn-warning { color: #0f172a !important; }
+.user-avatar { background: linear-gradient(135deg, #0369a1, #047857); }
+.btn-warning { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+.nav-item.active { background: linear-gradient(135deg, #075985, #0369a1); }
+.nav-item.active .nav-badge { background: rgba(255, 255, 255, .25); }
+.nav-badge { background: #0369a1; }
+.period-btn.active { background: #0369a1 !important; border-color: #0369a1 !important; }
+.user-avatar { background: linear-gradient(135deg, #0369a1, #047857) !important; }
+.brand-address, .nav-section-title { color: #94a3b8; }
+.main-wrap { --navy-400: #566377; --navy-500: #4b5a6e; }
+.sidebar-footer { color: #94a3b8; }
+.tab-btn { color: #475569; }
+.tab-btn.active { color: #0369a1; }
+#sb-po-count { background: #047857 !important; color: #fff !important; }
+#sb-nota-count { background: #b91c1c !important; color: #fff !important; }
+#sb-penawaran-count { background: #0369a1 !important; color: #fff !important; }
+.nav-badge[style*="am-500"] { background: #92400e !important; color: #fff !important; }
+.nav-item.active .nav-badge { background: rgba(0, 0, 0, .3) !important; color: #fff !important; }
+.sidebar-footer div { color: #94a3b8 !important; }
+:root { color-scheme: only light; }

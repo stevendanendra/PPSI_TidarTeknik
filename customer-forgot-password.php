@@ -3,7 +3,6 @@
  * customer-forgot-password.php — Permintaan reset password customer.
  * Token acak sekali pakai (disimpan sebagai hash, berlaku 1 jam).
  */
-if (session_status() === PHP_SESSION_NONE) session_start();
 require_once 'customer-auth.php';
 require_once 'lib.php';
 
@@ -15,7 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Masukkan email yang valid.';
+    } elseif (throttleBlocked('forgot', $email, 3, 15)) {
+        $error = 'Terlalu banyak permintaan reset. Coba lagi dalam 15 menit.';
     } else {
+        throttleHit('forgot', $email);
         $cust = dbRow("SELECT id, nama FROM customers WHERE email = ? AND status = 'active' LIMIT 1", [$email]);
         if ($cust) {
             $token = bin2hex(random_bytes(24));
@@ -50,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       --navy-800: #1e293b;
       --navy-700: #334155;
       --navy-500: #64748b;
+      --navy-400: #94a3b8;
       --navy-300: #cbd5e1;
       --navy-200: #e2e8f0;
       --navy-100: #f1f5f9;
@@ -228,7 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       transition: all .2s;
     }
     input[type="email"]::placeholder,
-    input[type="password"]::placeholder { color: var(--navy-500); }
+    input[type="password"]::placeholder { color: #94a3b8; }
     input[type="email"]:focus,
     input[type="password"]:focus {
       border-color: var(--teal-400);
@@ -266,7 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .btn-submit {
       width: 100%;
       padding: 13px;
-      background: linear-gradient(135deg, var(--teal-600), var(--emerald-600));
+      background: linear-gradient(135deg, #0369a1, #047857);
       border: none;
       border-radius: 10px;
       color: #fff;

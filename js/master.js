@@ -43,10 +43,10 @@ function renderSupplierTable() {
     return;
   }
   tbody.innerHTML = list.map((s, idx) => `<tr>
-    <td><strong>${s.nama}</strong></td>
-    <td><span class="badge badge-blue">${s.kode||'-'}</span></td>
-    <td>${s.kota||'-'}</td>
-    <td style="font-size:12px">${s.alamat||'-'}</td>
+    <td><strong>${esc(s.nama)}</strong></td>
+    <td><span class="badge badge-blue">${esc(s.kode||'-')}</span></td>
+    <td>${esc(s.kota||'-')}</td>
+    <td style="font-size:12px">${esc(s.alamat||'-')}</td>
     <td class="td-actions">
       <button class="btn btn-sm btn-warning btn-icon" onclick="editSupplier(${idx})">✏️</button>
       <button class="btn btn-sm btn-danger btn-icon" onclick="deleteSupplier(${idx})">🗑️</button>
@@ -84,10 +84,10 @@ function renderCustomerTable() {
     return;
   }
   tbody.innerHTML = list.map((c, idx) => `<tr>
-    <td><strong>${c.nama}</strong></td>
-    <td><span class="badge badge-green">${c.kode||'-'}</span></td>
-    <td>${c.kota||'-'}</td>
-    <td style="font-size:12px">${c.alamat||'-'}</td>
+    <td><strong>${esc(c.nama)}</strong></td>
+    <td><span class="badge badge-green">${esc(c.kode||'-')}</span></td>
+    <td>${esc(c.kota||'-')}</td>
+    <td style="font-size:12px">${esc(c.alamat||'-')}</td>
     <td class="td-actions">
       <button class="btn btn-sm btn-warning btn-icon" onclick="editCustomer(${idx})">✏️</button>
       <button class="btn btn-sm btn-danger btn-icon" onclick="deleteCustomer(${idx})">🗑️</button>

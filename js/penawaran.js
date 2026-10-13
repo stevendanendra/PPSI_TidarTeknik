@@ -82,12 +82,12 @@ function buildPnFilterDropdowns() {
   const custNames = [...new Set(pnList.map(n => n.customer).filter(Boolean))].sort();
   const sel = document.getElementById('filter-customer');
   if (!sel) return;
-  sel.innerHTML = '<option value="">Semua Customer</option>' + custNames.map(n => `<option value="${n}">${n}</option>`).join('');
+  sel.innerHTML = '<option value="">Semua Customer</option>' + custNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
 
   const years = [...new Set(pnList.map(n => new Date(n.tanggal).getFullYear()))].sort((a,b)=>b-a);
   const selYear = document.getElementById('filter-year');
   if (selYear) {
-    selYear.innerHTML = '<option value="">Semua Tahun</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+    selYear.innerHTML = '<option value="">Semua Tahun</option>' + years.map(y => `<option value="${esc(y)}">${esc(y)}</option>`).join('');
   }
 }
 
@@ -152,10 +152,10 @@ function renderPnTable(data) {
         : '';
 
     return `<tr>
-      <td class="td-mono">${n.nomor}${pnVersionBadge(n)}</td>
+      <td class="td-mono">${esc(n.nomor)}${pnVersionBadge(n)}</td>
       <td>${fmt.date(n.tanggal)}</td>
-      <td><strong>${n.customer}</strong></td>
-      <td>${n.att || '-'}</td>
+      <td><strong>${esc(n.customer)}</strong></td>
+      <td>${esc(n.att || '-')}</td>
       <td style="font-size: 11px; color: var(--navy-500)">${shortNotes}</td>
       <td class="td-amount">${fmt.rupiah(n.total)}${ppnBadge}</td>
       <td class="td-actions" style="display:flex;gap:4px">
@@ -405,7 +405,7 @@ function renderPnItems() {
       <td>
         <div style="display: flex; gap: 10px; align-items: flex-start;">
           <div style="flex: 1;">
-            <textarea class="form-control desc-multiline" placeholder="Ketik nama dan spesifikasi..." onchange="updatePnItem(${i},'desc',this.value)">${item.desc||''}</textarea>
+            <textarea class="form-control desc-multiline" placeholder="Ketik nama dan spesifikasi..." onchange="updatePnItem(${i},'desc',this.value)">${esc(item.desc||'')}</textarea>
             <button type="button" class="btn-spec-toggle ${hasSpecs?'active':''}" onclick="toggleSpecPn(${i})" style="margin-top: 4px;">
               ⚙️ Spesifikasi ${hasSpecs?'(Aktif)':''}
             </button>
@@ -414,32 +414,32 @@ function renderPnItems() {
           <div class="spec-grid" style="display: ${hasSpecs ? 'grid' : 'none'}; margin-top: 0; width: 200px; flex-shrink: 0;">
             <div class="spec-field">
               <label>Capacity</label>
-              <input type="text" class="form-control" value="${s.capacity||''}" oninput="updateSpecPn(${i},'capacity',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.capacity||'')}" oninput="updateSpecPn(${i},'capacity',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>Pressure</label>
-              <input type="text" class="form-control" value="${s.pressure||''}" oninput="updateSpecPn(${i},'pressure',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.pressure||'')}" oninput="updateSpecPn(${i},'pressure',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>In/Outlet</label>
-              <input type="text" class="form-control" value="${s.inoutlet||''}" oninput="updateSpecPn(${i},'inoutlet',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.inoutlet||'')}" oninput="updateSpecPn(${i},'inoutlet',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>Power</label>
-              <input type="text" class="form-control" value="${s.power||''}" oninput="updateSpecPn(${i},'power',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.power||'')}" oninput="updateSpecPn(${i},'power',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>Material</label>
-              <input type="text" class="form-control" value="${s.material||''}" oninput="updateSpecPn(${i},'material',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.material||'')}" oninput="updateSpecPn(${i},'material',this.value)" placeholder="...">
             </div>
           </div>
         </div>
       </td>
-      <td><input class="form-control" type="number" step="1" min="0" value="${item.qty||1}" oninput="updatePnItemQty(${i},this.value)" style="text-align:center"></td>
-      <td><input class="form-control" type="text" placeholder="Type" value="${item.satuan||''}" oninput="updatePnItem(${i},'satuan',this.value)"></td>
+      <td><input class="form-control" type="number" step="1" min="0" value="${esc(item.qty||1)}" oninput="updatePnItemQty(${i},this.value)" style="text-align:center"></td>
+      <td><input class="form-control" type="text" placeholder="Type" value="${esc(item.satuan||'')}" oninput="updatePnItem(${i},'satuan',this.value)"></td>
       <td><input class="form-control mask-money" type="text" placeholder="0" value="${item.price ? fmt.formatInput(item.price) : ''}" oninput="updatePnItemPrice(${i},this.value)" style="text-align:right"></td>
       <td><input class="form-control" type="text" value="${item.amount ? fmt.formatInput(item.amount) : ''}" readonly style="text-align:right;background:var(--navy-50);color:var(--em-600);font-weight:700"></td>
-      <td><input class="form-control" type="text" placeholder="Note per item" value="${item.note_item||''}" oninput="updatePnItem(${i},'note_item',this.value)"></td>
+      <td><input class="form-control" type="text" placeholder="Note per item" value="${esc(item.note_item||'')}" oninput="updatePnItem(${i},'note_item',this.value)"></td>
       <td class="item-row-del"><button class="btn-del-row" onclick="deletePnItem(${i})" title="Hapus baris">✕</button></td>
     </tr>`;
   }).join('');
@@ -633,7 +633,7 @@ async function savePn() {
 function pnVersionBadge(n) {
   const v = parseInt(n.versi) || 1;
   const cls = { Dikirim: 'badge-blue', Disetujui: 'badge-green', Ditolak: 'badge-danger', Revisi: 'badge-gray' }[n.status];
-  const st = cls ? ` <span class="badge ${cls}" style="font-size:9px;padding:1px 4px">${n.status}</span>` : '';
+  const st = cls ? ` <span class="badge ${cls}" style="font-size:9px;padding:1px 4px">${esc(n.status)}</span>` : '';
   return `<br><span class="badge badge-amber" style="font-size:9px;padding:1px 4px">V${v}</span>${st}`;
 }
 

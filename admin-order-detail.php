@@ -206,7 +206,7 @@ $badgePay = ['paid' => ['badge-green', 'Paid (Lunas)'], 'terverifikasi' => ['bad
             <?php elseif ($pm['status'] === 'ditolak'): ?><span class="badge badge-red">Ditolak</span>
             <?php else: ?><span class="badge badge-amber">Menunggu verifikasi</span><?php endif; ?>
             <span style="color:var(--navy-400)"><?= h(date('d/m/Y H:i', strtotime($pm['created_at']))) ?></span>
-            <?php if ($pm['bukti_file']): ?><a href="<?= h($pm['bukti_file']) ?>" target="_blank" rel="noopener">📎 Lihat bukti</a><?php endif; ?>
+            <?php if ($pm['bukti_file']): ?><a href="download.php?t=payment&id=<?= (int)$pm['id'] ?>" target="_blank" rel="noopener">📎 Lihat bukti</a><?php endif; ?>
           </div>
           <?php if ($pm['catatan']): ?><div style="margin-top:4px;color:var(--navy-600)"><?= h($pm['catatan']) ?></div><?php endif; ?>
           <?php if ($pm['catatan_admin']): ?><div style="margin-top:4px">Catatan admin: <?= h($pm['catatan_admin']) ?></div><?php endif; ?>

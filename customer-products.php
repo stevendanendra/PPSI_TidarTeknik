@@ -14,49 +14,41 @@ $kategori = trim($_GET['kategori'] ?? '');
 $viewTab  =trim($_GET['tab'] ?? 'all'); // 'all' atau 'wishlist'
 
 // Ambil daftar wishlist customer
-$wishlistIds = [];
-$wRes = mysqli_query($conn, "SELECT product_id FROM customer_wishlist WHERE customer_id = '{$currentCust['id']}'");
-while ($wRow = mysqli_fetch_assoc($wRes)) {
-    $wishlistIds[] = $wRow['product_id'];
-}
+$wishlistIds = array_column(dbRows("SELECT product_id FROM customer_wishlist WHERE customer_id = ?", [$currentCust['id']]), 'product_id');
 
 // Ambil list semua kategori yang ada di DB
-$catRes = mysqli_query($conn, "SELECT DISTINCT kategori FROM products WHERE is_active = 1 ORDER BY kategori ASC");
-$categories = [];
-while ($cRow = mysqli_fetch_assoc($catRes)) {
-    $categories[] = $cRow['kategori'];
-}
+$categories = array_column(dbRows("SELECT DISTINCT kategori FROM products WHERE is_active = 1 ORDER BY kategori ASC"), 'kategori');
 
 // Bangun query filter produk
 $where = ["p.is_active = 1"];
+$params = [];
 
 if (!empty($search)) {
-    $s = mysqli_real_escape_string($conn, $search);
-    $where[] = "(p.nama LIKE '%$s%' OR p.kode LIKE '%$s%' OR p.spesifikasi LIKE '%$s%' OR s.nama LIKE '%$s%')";
+    $like = '%' . $search . '%';
+    $where[] = "(p.nama LIKE ? OR p.kode LIKE ? OR p.spesifikasi LIKE ? OR s.nama LIKE ?)";
+    array_push($params, $like, $like, $like, $like);
 }
 
 if (!empty($kategori)) {
-    $k = mysqli_real_escape_string($conn, $kategori);
-    $where[] = "p.kategori = '$k'";
+    $where[] = "p.kategori = ?";
+    $params[] = $kategori;
 }
 
 if ($viewTab === 'wishlist') {
     if (empty($wishlistIds)) {
         $where[] = "1 = 0"; // kosongkan hasil jika belum ada wishlist
     } else {
-        $inWish = "'" . implode("','", array_map(function($id) use ($conn) { return mysqli_real_escape_string($conn, $id); }, $wishlistIds)) . "'";
-        $where[] = "p.id IN ($inWish)";
+        $where[] = "p.id IN (" . implode(',', array_fill(0, count($wishlistIds), '?')) . ")";
+        $params = array_merge($params, $wishlistIds);
     }
 }
 
 $whereSql = implode(" AND ", $where);
-$query = "SELECT p.*, s.nama AS nama_supplier 
-          FROM products p 
-          LEFT JOIN suppliers s ON p.supplier_id = s.id 
-          WHERE $whereSql 
-          ORDER BY p.created_at DESC";
-$resProds = mysqli_query($conn, $query);
-$products = mysqli_fetch_all($resProds, MYSQLI_ASSOC);
+$products = dbRows("SELECT p.*, s.nama AS nama_supplier
+                    FROM products p
+                    LEFT JOIN suppliers s ON p.supplier_id = s.id
+                    WHERE $whereSql
+                    ORDER BY p.created_at DESC", $params);
 
 // Helper icon kategori
 function getCategoryIcon($cat) {

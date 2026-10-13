@@ -108,13 +108,13 @@ function buildNotaFilterDropdowns() {
   const sel = document.getElementById('filter-customer');
   if (!sel) return;
   sel.innerHTML = '<option value="">Semua Customer</option>' +
-    custNames.map(n => `<option value="${n}">${n}</option>`).join('');
+    custNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
 
   const years = [...new Set(notaList.map(n => new Date(n.tanggal).getFullYear()))].sort((a, b) => b - a);
   const selYear = document.getElementById('filter-year-nota');
   if (selYear) {
     selYear.innerHTML = '<option value="">Semua Tahun</option>' +
-      years.map(y => `<option value="${y}">${y}</option>`).join('');
+      years.map(y => `<option value="${esc(y)}">${esc(y)}</option>`).join('');
   }
 }
 
@@ -220,17 +220,17 @@ function renderNotaTable(data) {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       const weeks = Math.floor(diffDays / 7);
       if (weeks > 0) {
-        smtStr = `<br><small style="color:#ef4444; font-weight:800; background:#fee2e2; padding:2px 4px; border-radius:4px; display:inline-block; margin-top:4px">⚠️ Sudah ${weeks} Minggu</small>`;
+        smtStr = `<br><small style="color:#b91c1c; font-weight:800; background:#fee2e2; padding:2px 4px; border-radius:4px; display:inline-block; margin-top:4px">⚠️ Sudah ${weeks} Minggu</small>`;
       } else {
         smtStr = `<br><small style="color:#b45309; font-weight:700;">🕒 Belum 1 Minggu</small>`;
       }
     }
 
     return `<tr>
-      <td class="td-mono">${n.nomor}</td>
+      <td class="td-mono">${esc(n.nomor)}</td>
       <td>${fmt.date(n.tanggal)}${smtStr}${n.status !== 'Lunas' ? `<br><small style="color:var(--navy-400)">Due: ${fmt.date(dueStr)}</small>` : ''}</td>
-      <td><strong>${n.customer}</strong></td>
-      <td><span class="td-mono" style="font-size:11px">${n.refPO || '-'}</span></td>
+      <td><strong>${esc(n.customer)}</strong></td>
+      <td><span class="td-mono" style="font-size:11px">${esc(n.refPO || '-')}</span></td>
       <td>${ppnBadge}</td>
       <td>${statusBadge}</td>
       <td class="td-amount">${fmt.rupiah(t.grandTotal)}</td>
@@ -461,7 +461,7 @@ function renderNotaItems() {
       <td>
         <div style="display: flex; gap: 10px; align-items: flex-start;">
           <div style="flex: 1;">
-            <textarea class="form-control" rows="2" placeholder="Deskripsi / Spesifikasi" onchange="updateNotaItem(${i},'desc',this.value)">${item.desc || ''}</textarea>
+            <textarea class="form-control" rows="2" placeholder="Deskripsi / Spesifikasi" onchange="updateNotaItem(${i},'desc',this.value)">${esc(item.desc || '')}</textarea>
             <button type="button" class="btn-spec-toggle ${hasSpecs ? 'active' : ''}" onclick="toggleSpec(${i})" style="margin-top: 4px;">
               ⚙️ Spesifikasi ${hasSpecs ? '(Aktif)' : ''}
             </button>
@@ -470,30 +470,30 @@ function renderNotaItems() {
           <div class="spec-grid" style="display: ${hasSpecs ? 'grid' : 'none'}; margin-top: 0; width: 200px; flex-shrink: 0;">
             <div class="spec-field">
               <label>Capacity</label>
-              <input type="text" class="form-control" value="${s.capacity || ''}" oninput="updateNotaSpec(${i},'capacity',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.capacity || '')}" oninput="updateNotaSpec(${i},'capacity',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>Pressure</label>
-              <input type="text" class="form-control" value="${s.pressure || ''}" oninput="updateNotaSpec(${i},'pressure',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.pressure || '')}" oninput="updateNotaSpec(${i},'pressure',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>In/Outlet</label>
-              <input type="text" class="form-control" value="${s.inoutlet || ''}" oninput="updateNotaSpec(${i},'inoutlet',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.inoutlet || '')}" oninput="updateNotaSpec(${i},'inoutlet',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>Power</label>
-              <input type="text" class="form-control" value="${s.power || ''}" oninput="updateNotaSpec(${i},'power',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.power || '')}" oninput="updateNotaSpec(${i},'power',this.value)" placeholder="...">
             </div>
             <div class="spec-field">
               <label>Material</label>
-              <input type="text" class="form-control" value="${s.material || ''}" oninput="updateNotaSpec(${i},'material',this.value)" placeholder="...">
+              <input type="text" class="form-control" value="${esc(s.material || '')}" oninput="updateNotaSpec(${i},'material',this.value)" placeholder="...">
             </div>
           </div>
         </div>
       </td>
       <td><input class="form-control mask-money" type="text" placeholder="0" value="${item.jasaRakit ? fmt.formatInput(item.jasaRakit) : ''}" oninput="updateNotaItemJasa(${i},this.value)" style="text-align:right"></td>
-      <td><input class="form-control" type="number" step="1" min="0" value="${item.qty || 1}" oninput="updateNotaItemQty(${i},this.value)" style="text-align:center"></td>
-      <td><input class="form-control" type="text" placeholder="Type" value="${item.satuan || ''}" oninput="updateNotaItem(${i},'satuan',this.value)"></td>
+      <td><input class="form-control" type="number" step="1" min="0" value="${esc(item.qty || 1)}" oninput="updateNotaItemQty(${i},this.value)" style="text-align:center"></td>
+      <td><input class="form-control" type="text" placeholder="Type" value="${esc(item.satuan || '')}" oninput="updateNotaItem(${i},'satuan',this.value)"></td>
       <td><input class="form-control mask-money" type="text" placeholder="0" value="${item.price ? fmt.formatInput(item.price) : ''}" oninput="updateNotaItemPrice(${i},this.value)" style="text-align:right"></td>
       <td><input class="form-control" type="text" value="${item.amount ? fmt.formatInput(item.amount) : ''}" readonly style="text-align:right;background:var(--navy-50);color:var(--em-600);font-weight:700"></td>
       <td class="item-row-del"><button class="btn-del-row" onclick="deleteNotaItem(${i})" title="Hapus baris">✕</button></td>

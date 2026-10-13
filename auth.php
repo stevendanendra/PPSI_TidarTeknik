@@ -5,9 +5,7 @@
  * Include di bagian paling atas setiap halaman yang dilindungi.
  */
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/security.php';
 
 // Kredensial dibaca dari config.php (tidak di-commit). Lihat config.sample.php.
 $GLOBALS['app_config'] = (static function () {
@@ -27,6 +25,12 @@ function verifyAdminLogin(string $user, string $pass): bool {
 }
 define('AUTH_SESSION_KEY', 'tidar_auth');
 define('AUTH_SESSION_TIMEOUT', 8 * 60 * 60); // 8 jam dalam detik
+
+/** True bila admin sedang login dengan sesi yang masih berlaku (tanpa redirect). */
+function isAdminLoggedIn(): bool {
+    return !empty($_SESSION[AUTH_SESSION_KEY])
+        && (time() - ($_SESSION['auth_time'] ?? 0)) <= AUTH_SESSION_TIMEOUT;
+}
 
 /**
  * Cek apakah user sudah login dan sesi masih valid.

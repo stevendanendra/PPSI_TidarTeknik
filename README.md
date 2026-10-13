@@ -71,6 +71,17 @@ Sistem Informasi Manajemen Terintegrasi untuk **CV. Tidar Teknik** (Supplier Tek
 
 ---
 
+## 🔒 Catatan Keamanan
+
+- **Login**: admin dan customer dibatasi 5 percobaan gagal per 15 menit; ID sesi diganti setelah login; cookie sesi `HttpOnly` + `SameSite=Lax`.
+- **CSRF**: semua request POST wajib membawa token (disisipkan otomatis ke form dan ke `fetch`).
+- **Query**: seluruh akses database memakai prepared statement.
+- **XSS**: data pengguna di-escape di PHP (`h()`) dan di JavaScript (`esc()`).
+- **File upload**: divalidasi dari isi file (bukan ekstensi), disimpan dengan nama acak, dan hanya bisa dibuka lewat `download.php` oleh admin atau pemilik pesanan. Untuk server Nginx, letakkan folder upload di luar web root lewat `upload_dir` di `config.php`, karena `.htaccess` hanya berlaku di Apache.
+- **Production**: isi `admin_password_hash`, matikan `show_reset_link`, dan pakai HTTPS.
+
+---
+
 ## 📁 Dokumen Perencanaan
 
 - [Ringkasan PMP](docs/Ringkasan_PMP.md) — jadwal, biaya, dan product scope menurut Project Management Plan.

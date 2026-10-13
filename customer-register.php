@@ -4,9 +4,6 @@
  * CV. Tidar Teknik
  */
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 require_once 'customer-auth.php';
 
@@ -43,9 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($password !== $passConf) {
         $error = 'Konfirmasi password tidak cocok dengan password.';
     } else {
-        $cleanEmail = mysqli_real_escape_string($conn, $email);
-        $check = mysqli_query($conn, "SELECT id FROM customers WHERE email = '$cleanEmail' LIMIT 1");
-        if (mysqli_num_rows($check) > 0) {
+        if (dbRow("SELECT id FROM customers WHERE email = ? LIMIT 1", [$email])) {
             $error = 'Email ini sudah terdaftar. Silakan gunakan email lain atau langsung masuk.';
         } else {
             // Generate ID unik
@@ -60,18 +55,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (empty($kode)) $kode = 'CUS';
 
-            $cleanNama    = mysqli_real_escape_string($conn, $nama);
-            $cleanPic     = mysqli_real_escape_string($conn, $pic);
-            $cleanKode    = mysqli_real_escape_string($conn, $kode);
-            $cleanKota    = mysqli_real_escape_string($conn, strtoupper($kota));
-            $cleanAlamat  = mysqli_real_escape_string($conn, $alamat);
-            $cleanTelp    = mysqli_real_escape_string($conn, $telepon);
-            $hashedPass   = password_hash($password, PASSWORD_BCRYPT);
+            $hashedPass = password_hash($password, PASSWORD_BCRYPT);
+            $cleanNama = $nama;
+            $cleanEmail = $email;
 
-            $ins = "INSERT INTO customers (id, nama, kode, kota, alamat, email, password, telepon, pic, status) 
-                    VALUES ('$newId', '$cleanNama', '$cleanKode', '$cleanKota', '$cleanAlamat', '$cleanEmail', '$hashedPass', '$cleanTelp', '$cleanPic', 'active')";
-
-            if (mysqli_query($conn, $ins)) {
+            try {
+                dbRun("INSERT INTO customers (id, nama, kode, kota, alamat, email, password, telepon, pic, status)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')",
+                    [$newId, $nama, $kode, strtoupper($kota), $alamat, $email, $hashedPass, $telepon, $pic]);
+                session_regenerate_id(true);
                 // Auto-login setelah registrasi
                 $_SESSION[CUSTOMER_SESSION_KEY] = true;
                 $_SESSION[CUSTOMER_ID_KEY]      = $newId;
@@ -82,8 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 header('Location: customer-dashboard.php');
                 exit;
-            } else {
-                $error = 'Terjadi kesalahan saat menyimpan data: ' . mysqli_error($conn);
+            } catch (Throwable $e) {
+                $error = 'Terjadi kesalahan saat menyimpan data. Coba lagi.';
             }
         }
     }
@@ -107,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       --navy-800: #1e293b;
       --navy-700: #334155;
       --navy-500: #64748b;
+      --navy-400: #94a3b8;
       --navy-300: #cbd5e1;
       --navy-200: #e2e8f0;
       --navy-100: #f1f5f9;
@@ -272,7 +265,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       outline: none;
       transition: all .2s;
     }
-    input::placeholder, textarea::placeholder { color: var(--navy-500); }
+    input::placeholder, textarea::placeholder { color: #94a3b8; }
     input:focus, textarea:focus {
       border-color: var(--teal-400);
       background: rgba(14,165,233,.08);
@@ -295,7 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     .btn-submit {
       width: 100%;
       padding: 13px;
-      background: linear-gradient(135deg, var(--teal-600), var(--emerald-600));
+      background: linear-gradient(135deg, #0369a1, #047857);
       border: none;
       border-radius: 10px;
       color: #fff;

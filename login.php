@@ -4,11 +4,9 @@
 /**
  * login.php — Halaman Login CV. Tidar Teknik
  */
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 require_once 'auth.php';
+require_once 'lib.php';
 
 $error   = '';
 $success = '';
@@ -24,7 +22,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $inputUser = trim($_POST['username'] ?? '');
     $inputPass = trim($_POST['password'] ?? '');
 
-    if (verifyAdminLogin($inputUser, $inputPass)) {
+    if (throttleBlocked('admin', $inputUser)) {
+        $error = 'Terlalu banyak percobaan login. Coba lagi dalam 15 menit.';
+    } elseif (verifyAdminLogin($inputUser, $inputPass)) {
+        throttleClear('admin', $inputUser);
+        session_regenerate_id(true); // cegah session fixation
         $_SESSION[AUTH_SESSION_KEY] = true;
         $_SESSION['auth_time']      = time();
         $_SESSION['auth_user']      = $inputUser;
@@ -35,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . $redirect);
         exit;
     } else {
+        throttleHit('admin', $inputUser);
         $error = 'Username atau password salah. Silakan coba lagi.';
     }
 }
@@ -147,7 +150,7 @@ $loggedOut = isset($_GET['logout']) && $_GET['logout'] == '1';
       width: 68px;
       height: 68px;
       margin: 0 auto 16px;
-      background: linear-gradient(135deg, var(--teal-600), #1d4ed8);
+      background: linear-gradient(135deg, #0369a1, #1d4ed8);
       border-radius: 18px;
       display: flex;
       align-items: center;
@@ -217,7 +220,7 @@ $loggedOut = isset($_GET['logout']) && $_GET['logout'] == '1';
       transition: border-color .2s, background .2s, box-shadow .2s;
     }
     input[type="text"]::placeholder,
-    input[type="password"]::placeholder { color: var(--navy-500); }
+    input[type="password"]::placeholder { color: #94a3b8; }
     input[type="text"]:focus,
     input[type="password"]:focus {
       border-color: var(--teal-500);
@@ -262,7 +265,7 @@ $loggedOut = isset($_GET['logout']) && $_GET['logout'] == '1';
     .btn-login {
       width: 100%;
       padding: 13px;
-      background: linear-gradient(135deg, var(--teal-600), #1d4ed8);
+      background: linear-gradient(135deg, #0369a1, #1d4ed8);
       border: none;
       border-radius: 10px;
       color: #fff;
@@ -287,7 +290,7 @@ $loggedOut = isset($_GET['logout']) && $_GET['logout'] == '1';
       text-align: center;
       margin-top: 24px;
       font-size: 11.5px;
-      color: var(--navy-500);
+      color: #94a3b8;
     }
     .card-footer strong { color: var(--navy-300); }
 

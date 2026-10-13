@@ -12,8 +12,7 @@ $success = '';
 $error = '';
 
 // Ambil list suppliers untuk dropdown
-$supRes = mysqli_query($conn, "SELECT id, nama FROM suppliers ORDER BY nama ASC");
-$suppliers = mysqli_fetch_all($supRes, MYSQLI_ASSOC);
+$suppliers = dbRows("SELECT id, nama FROM suppliers ORDER BY nama ASC");
 
 // Handle Tambah / Edit Produk
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -66,6 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Handle Hapus Produk
 if (isset($_GET['delete'])) {
+    if (!csrfTokenValid($_GET['t'] ?? null)) {
+        http_response_code(403);
+        exit('Token keamanan tidak valid. Muat ulang halaman lalu coba lagi.');
+    }
     dbRun("DELETE FROM products WHERE id = ?", [trim($_GET['delete'])]);
     header('Location: admin-products.php?deleted=1');
     exit;
@@ -92,8 +95,7 @@ if ($search !== '') {
 }
 
 // Hitung request pending untuk badge sidebar
-$cntPendingRes = mysqli_query($conn, "SELECT COUNT(*) FROM product_requests WHERE status = 'pending'");
-$totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
+$totalPending = (int)dbRow("SELECT COUNT(*) AS c FROM product_requests WHERE status = 'pending'")['c'];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -150,7 +152,7 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
     </nav>
     <div class="sidebar-footer">
       <div style="margin-bottom:8px">📞 0822 2525 5251 &nbsp;|&nbsp; tidarteknik@gmail.com</div>
-      <a href="logout.php" style="display:flex;align-items:center;gap:6px;justify-content:center;padding:7px 12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#ef4444;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s" id="btn-logout">🚪 Keluar</a>
+      <a href="logout.php" style="display:flex;align-items:center;gap:6px;justify-content:center;padding:7px 12px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:8px;color:#fca5a5;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s" id="btn-logout">🚪 Keluar</a>
     </div>
   </aside>
 
@@ -243,7 +245,7 @@ $totalPending = (int)mysqli_fetch_row($cntPendingRes)[0];
                           title="Edit Produk"
                         >✏️</button>
                         <a 
-                          href="admin-products.php?delete=<?= urlencode($p['id']) ?>" 
+                          href="admin-products.php?delete=<?= urlencode($p['id']) ?>&t=<?= urlencode(csrfToken()) ?>" 
                           class="btn btn-sm btn-danger btn-icon" 
                           onclick="return confirm('Hapus produk ini dari katalog?')"
                           title="Hapus Produk"

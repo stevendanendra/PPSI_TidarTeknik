@@ -4,11 +4,9 @@
  * CV. Tidar Teknik
  */
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/security.php';
 
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/lib.php';
 
 define('CUSTOMER_SESSION_KEY', 'tidar_customer_auth');
 define('CUSTOMER_ID_KEY',      'tidar_customer_id');
@@ -51,11 +49,7 @@ function getCurrentCustomer(): ?array {
     if (!isCustomerLoggedIn()) {
         return null;
     }
-    $cId = mysqli_real_escape_string($conn, $_SESSION[CUSTOMER_ID_KEY]);
-    $res = mysqli_query($conn, "SELECT id, nama, kode, kota, alamat, npwp, email, telepon, pic, status, must_change_password, tutorial_seen FROM customers WHERE id = '$cId' LIMIT 1");
-    if ($res && $row = mysqli_fetch_assoc($res)) {
-        return $row;
-    }
-    return null;
+    return dbRow("SELECT id, nama, kode, kota, alamat, npwp, email, telepon, pic, status, must_change_password, tutorial_seen
+                  FROM customers WHERE id = ? LIMIT 1", [(string)$_SESSION[CUSTOMER_ID_KEY]]);
 }
 ?>
