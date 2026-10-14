@@ -15,6 +15,9 @@ return [
 
     // Akun customer dibuat admin (PMP). Ubah ke true hanya bila ingin registrasi mandiri.
     'allow_customer_register' => false,
+    // Customer wajib memverifikasi email (tautan dikirim saat admin membuat akun) sebelum bisa login.
+    // Matikan hanya bila server belum bisa mengirim email (admin masih bisa 'Tandai terverifikasi').
+    'require_email_verification' => true,
     // Tampilkan tautan reset password di layar (khusus dev/tanpa email server). Matikan di produksi.
     'show_reset_link' => false,
 

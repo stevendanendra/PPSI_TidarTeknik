@@ -23,6 +23,19 @@ Persiapan: import `db/ppsi_tidarteknik.sql`, buat `config.php` dari `config.samp
 | A11 | Akun dinonaktifkan | Admin nonaktifkan akun customer yang sedang login | Request berikutnya diarahkan ke login | Ya | | |
 | A12 | Help Center | Menu Help Center | Alur singkat dan FAQ tampil | | | |
 | A13 | Registrasi mandiri mati | Buka `customer-register.php` | Diarahkan ke login | Ya | | |
+| A14 | Login sebelum email diverifikasi | Login akun baru yang emailnya belum diverifikasi | Ditolak dengan pesan "belum diverifikasi" + tautan kirim ulang | Ya | | |
+| A15 | Kirim ulang verifikasi | Isi email di halaman kirim ulang | Pesan seragam (email terdaftar/tidak); tautan lama tidak berlaku | Ya | | |
+| A16 | Verifikasi email | Buka tautan verifikasi dari email | Email terverifikasi, bisa login; tautan tidak bisa dipakai ulang | Ya | | |
+
+## L. Landing page & akses
+
+| ID | Skenario | Hasil yang diharapkan | Otomatis | Hasil | Catatan |
+|---|---|---|---|---|---|
+| L01 | Landing page publik | Tombol Masuk ada; tidak ada tautan login admin; harga tidak tampil | Ya | | |
+| L02 | Alamat root (`/`) | Menampilkan landing page, bukan login admin | Ya | | |
+| L03 | Halaman login/lupa password/kirim ulang customer | Tidak ada tautan/teks login admin | Ya | | |
+| L04 | Logout customer | Kembali ke landing page | Ya | | |
+| L05 | Pengunjung buka halaman customer langsung | Diarahkan ke login customer | Ya | | |
 
 ## B. Katalog & supplier
 

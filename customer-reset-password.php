@@ -20,7 +20,7 @@ if (!$cust) {
     } elseif ($p1 !== $p2) {
         $error = 'Konfirmasi password tidak cocok.';
     } else {
-        dbRun("UPDATE customers SET password = ?, reset_token_hash = NULL, reset_expires = NULL, must_change_password = 0 WHERE id = ?", [password_hash($p1, PASSWORD_BCRYPT), $cust['id']]);
+        dbRun("UPDATE customers SET password = ?, reset_token_hash = NULL, reset_expires = NULL, must_change_password = 0, email_verified_at = COALESCE(email_verified_at, NOW()) WHERE id = ?", [password_hash($p1, PASSWORD_BCRYPT), $cust['id']]);
         $success = 'Password berhasil diubah. Silakan masuk dengan password baru.';
         $cust = null;
     }

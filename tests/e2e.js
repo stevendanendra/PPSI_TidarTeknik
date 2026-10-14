@@ -33,6 +33,9 @@ async function sectionA(b) {
       await A.fill('input[name=nama]', nama); await A.fill('input[name=email]', email);
       await A.fill('input[name=kota]', 'MALANG'); await A.fill('textarea[name=alamat]', 'Jl. Uji ' + nama);
       await Promise.all([A.waitForNavigation({ waitUntil: 'load' }), A.click('button:has-text("Buat Akun")')]);
+      const lnk = A.locator('a:has-text("Tautan verifikasi")');
+      ctx.verifyLinks = ctx.verifyLinks || {};
+      ctx.verifyLinks[email] = (await lnk.count()) ? await lnk.first().getAttribute('href') : null;
     }
     assert(sql("select count(*) from customers where email in ('alfa@test.com','beta@test.com')") === '2', 'akun tidak terbentuk');
   });
@@ -48,6 +51,39 @@ async function sectionA(b) {
   ctx.cb = await (await b.newContext()).newPage();
   for (const p of [ctx.admin, ctx.ca, ctx.cb]) p.on('dialog', d => d.accept());
   const defaultPass = 'tidar123';
+  await t('A14', 'Login ditolak sebelum email diverifikasi', async () => {
+    const p = await b.newPage();
+    await custLogin(p, 'alfa@test.com', 'tidar123');
+    const txt = await bodyText(p);
+    assert(/customer-login\.php/.test(p.url()) && /belum diverifikasi/i.test(txt), 'tidak diblok: ' + p.url() + ' ' + txt.slice(0, 160));
+    assert(await p.locator('a[href*="customer-resend-verification"]').count() > 0, 'tidak ada tautan kirim ulang');
+    await p.close();
+  });
+  await t('A15', 'Kirim ulang verifikasi: pesan seragam + tautan lama tergantikan', async () => {
+    const p = await b.newPage(); const msgs = [];
+    for (const em of ['beta@test.com', 'tidak-ada@test.com']) {
+      await p.goto(BASE + 'customer-resend-verification.php'); await p.fill('input[name=email]', em);
+      await Promise.all([p.waitForNavigation({ waitUntil: 'load' }), p.click('button[type=submit]')]);
+      msgs.push((await bodyText(p)).match(/Jika email terdaftar[^.]*\./)?.[0]);
+      if (em === 'beta@test.com') ctx.verifyLinks['beta@test.com'] = await p.locator('a[href*="customer-verify-email"]').first().getAttribute('href');
+    }
+    assert(msgs[0] && msgs[0] === msgs[1], JSON.stringify(msgs));
+    await p.goto(BASE + 'customer-verify-email.php?token=' + ctx.verifyLinks['beta@test.com'].split('token=')[1].slice(0, 10) + 'xxxx');
+    assert(/tidak valid|kedaluwarsa/i.test(await bodyText(p)), 'token salah diterima');
+    await p.close();
+  });
+  await t('A16', 'Verifikasi email lewat tautan mengaktifkan login', async () => {
+    const p = await b.newPage();
+    for (const em of ['alfa@test.com', 'beta@test.com']) {
+      assert(ctx.verifyLinks[em], 'tautan verifikasi dev tidak tersedia untuk ' + em);
+      await p.goto(ctx.verifyLinks[em]);
+      assert(/berhasil diverifikasi/i.test(await bodyText(p)), (await bodyText(p)).slice(0, 160));
+      await p.goto(ctx.verifyLinks[em]);   // tautan sekali pakai
+      assert(/tidak valid|kedaluwarsa/i.test(await bodyText(p)), 'tautan dapat dipakai ulang');
+      assert(sql(`select email_verified_at is not null from customers where email='${em}'`) === '1', 'kolom verified kosong');
+    }
+    await p.close();
+  });
   await t('A07', 'Wajib ganti password saat login pertama', async () => {
     await custLogin(ctx.ca, 'alfa@test.com', defaultPass);
     await ctx.ca.goto(BASE + 'customer-dashboard.php');
@@ -104,7 +140,7 @@ async function sectionA(b) {
     await A.goto(BASE + 'admin-customers.php');
     await A.fill('input[name=nama]', 'Uji Gamma'); await A.fill('input[name=email]', 'gamma@test.com');
     await Promise.all([A.waitForNavigation({ waitUntil: 'load' }), A.click('button:has-text("Buat Akun")')]);
-    sql("update customers set must_change_password=0 where email='gamma@test.com'");
+    sql("update customers set must_change_password=0, email_verified_at=NOW() where email='gamma@test.com'");
     const c = await b.newContext(); const g = await c.newPage();
     await custLogin(g, 'gamma@test.com', 'tidar123'); await g.goto(BASE + 'customer-dashboard.php');
     assert(/customer-dashboard/.test(g.url()), 'gamma gagal login: ' + g.url());
@@ -290,6 +326,14 @@ async function sectionC(b) {
     ctx.pnV2 = sql("select id from penawaran where parent_id='pn_uji1' and versi=2");
     assert(sql(`select count(*) from penawaran_items where penawaran_id='${ctx.pnV2}'`) === '1', 'item tidak tersalin');
     assert(sql("select nomor<>'' from penawaran where id='pn_uji1'") === '1', 'nomor induk kosong');
+  });
+  await t('C09b', 'Revisi penawaran tanpa nomor: induk & V2 memakai nomor yang sama', async () => {
+    sql("insert into penawaran (id, nomor, tanggal, customer, kota, total, status) values ('pn_blank','', CURDATE(), 'X', 'MALANG', 1000, 'Pending')");
+    sql("insert into penawaran_items (penawaran_id, deskripsi, qty, satuan, price, amount) values ('pn_blank','ITEM',1,'PCS',1000,1000)");
+    await A.goto(BASE + 'penawaran.php'); await A.waitForTimeout(1000);
+    await A.evaluate(() => revisiPn('pn_blank')); await A.waitForTimeout(1500);
+    const rows = sql("select nomor from penawaran where id='pn_blank' or parent_id='pn_blank'").split('\n');
+    assert(rows.length === 2 && rows[0] !== '' && rows[0] === rows[1], 'nomor: ' + JSON.stringify(rows));
   });
   await t('C10', 'Customer menyetujui V2 -> Disetujui + notifikasi admin', async () => {
     await A.evaluate(id => kirimPn(id), ctx.pnV2); await A.waitForTimeout(1200);
@@ -525,9 +569,8 @@ async function sectionF(b) {
   const fs = require('fs');
   const chartJs = fs.existsSync('/tmp/chartjs/package/dist/chart.umd.js') ? fs.readFileSync('/tmp/chartjs/package/dist/chart.umd.js', 'utf8') : null;
   await t('F01', 'Grafik PO & Nota terisi, tombol 3/6/12 bulan berfungsi', async () => {
-    assert(chartJs, 'Chart.js lokal tidak tersedia (CDN diblokir di lingkungan uji)');
     const p = await A.context().newPage();
-    await p.route('**/chart.umd.min.js', r => r.fulfill({ contentType: 'application/javascript', body: chartJs }));
+    const blocked = []; await p.route(/cdn\.jsdelivr\.net/, r => { blocked.push(r.request().url()); r.abort(); }); // buktikan tidak bergantung CDN
     const errs = []; p.on('pageerror', e => errs.push(e.message));
     await p.goto(BASE + 'index.php'); await p.waitForTimeout(2500);
     const info = await p.evaluate(() => {
@@ -539,7 +582,8 @@ async function sectionF(b) {
     assert(await p.evaluate(() => Chart.getChart('chart-po').data.labels.length) === 12, 'tombol 12 bln gagal');
     await p.click('.period-btn[data-chart=po][data-n="3"]'); await p.waitForTimeout(400);
     assert(await p.evaluate(() => Chart.getChart('chart-po').data.labels.length) === 3, 'tombol 3 bln gagal');
-    assert(!errs.length, errs.join('|')); await p.close();
+    assert(!errs.length, errs.join('|'));
+    assert(!blocked.some(u => /chart/i.test(u)), 'Chart.js masih dari CDN: ' + blocked); await p.close();
   });
   await t('F02', 'Banner dokumen jatuh tempo muncul dengan hitungan', async () => {
     const p = await A.context().newPage(); await p.goto(BASE + 'index.php'); await p.waitForTimeout(2000);
@@ -685,6 +729,51 @@ async function sectionH() {
   skip('H04', 'MySQL 8 dan MariaDB', 'hanya MariaDB 10.11 di lingkungan uji; import dump sukses (resetDb)');
 }
 
+
+async function sectionL(b) {
+  console.log('\nL. Landing page & akses');
+  const anon = await (await b.newContext()).newPage();
+  await t('L01', 'Landing page publik: ada tombol Masuk, tanpa tautan login admin, tanpa harga', async () => {
+    await anon.goto(BASE + 'home.php');
+    const txt = await bodyText(anon);
+    assert(/CV\. Tidar Teknik/.test(txt) && await anon.locator('a[href="customer-login.php"]').count() > 0, 'tombol Masuk tidak ada');
+    const hrefs = await anon.locator('a').evaluateAll(as => as.map(a => a.getAttribute('href') || ''));
+    const bad = hrefs.filter(h => /(^|\/)login\.php/.test(h) || /admin/i.test(h));
+    assert(!bad.length, 'tautan admin di landing: ' + bad);
+    assert(!/Rp\s?\d/.test(txt), 'harga tampil ke pengunjung');
+    assert(!/(?:^|[^-])login\.php|logout\.php/.test(await anon.content()), 'sumber halaman menyebut login.php admin');
+  });
+  await t('L02', 'Alamat root (/) menampilkan landing page, bukan login admin', async () => {
+    await anon.goto(BASE);
+    assert(/home\.php|\/$/.test(anon.url()) && !/login\.php/.test(anon.url()), 'url: ' + anon.url());
+    assert(/Pengadaan komponen teknik/i.test(await bodyText(anon)), 'bukan landing: ' + (await bodyText(anon)).slice(0, 100));
+  });
+  await t('L03', 'Halaman login customer tidak punya tautan ke login admin', async () => {
+    for (const u of ['customer-login.php', 'customer-forgot-password.php', 'customer-resend-verification.php']) {
+      await anon.goto(BASE + u);
+      const hrefs = await anon.locator('a').evaluateAll(as => as.map(a => a.getAttribute('href') || ''));
+      assert(!hrefs.some(h => /(^|\/)login\.php/.test(h)), u + ' memuat tautan admin');
+      assert(!/Login Admin|Staff Internal/i.test(await bodyText(anon)), u + ' menyebut login admin');
+    }
+    await anon.goto(BASE + 'customer-login.php');
+    assert(await anon.locator('a[href="home.php"]').count() > 0, 'tidak ada tautan kembali ke beranda');
+  });
+  await t('L04', 'Setelah logout customer kembali ke landing page', async () => {
+    await ctx.cb.goto(BASE + 'customer-dashboard.php');
+    await ctx.cb.goto(BASE + 'customer-logout.php');
+    assert(/home\.php/.test(ctx.cb.url()), 'url: ' + ctx.cb.url());
+    await custLogin(ctx.cb, 'beta@test.com', 'Beta12345');   // login lagi agar bagian selanjutnya tetap jalan
+  });
+  await t('L05', 'Pengunjung membuka halaman customer langsung -> diarahkan ke login customer', async () => {
+    await anon.goto(BASE + 'customer-dashboard.php'); assert(/customer-login\.php/.test(anon.url()), anon.url());
+  });
+  await t('L06', 'Customer yang sudah login melihat tombol Ke Dashboard di landing', async () => {
+    await ctx.ca.goto(BASE + 'home.php');
+    assert(await ctx.ca.locator('a[href="customer-dashboard.php"]').count() > 0, 'tidak ada tombol dashboard');
+  });
+  await anon.close();
+}
+
 (async () => {
   L.resetDb();
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] });
@@ -696,6 +785,7 @@ async function sectionH() {
     if (run('E')) await sectionE(b);
     if (run('F')) await sectionF(b);
     if (run('G')) await sectionG(b);
+    if (run('L')) await sectionL(b);
     await sectionH();
   } finally {
     await b.close();

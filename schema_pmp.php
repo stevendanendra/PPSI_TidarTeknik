@@ -23,7 +23,7 @@ function pmpAddColumn(mysqli $conn, string $table, string $col, string $definiti
 function ensurePmpSchema(mysqli $conn): void {
     mysqli_query($conn, "CREATE TABLE IF NOT EXISTS app_meta (k VARCHAR(50) PRIMARY KEY, v VARCHAR(100) NOT NULL)");
     $r = mysqli_query($conn, "SELECT v FROM app_meta WHERE k = 'pmp_schema'");
-    if ($r && ($row = mysqli_fetch_row($r)) && (int)$row[0] >= 3) {
+    if ($r && ($row = mysqli_fetch_row($r)) && (int)$row[0] >= 4) {
         return;
     }
 
@@ -149,5 +149,14 @@ function ensurePmpSchema(mysqli $conn): void {
         KEY idx_attempt (scope, ident, ip, created_at)
     )");
 
-    mysqli_query($conn, "REPLACE INTO app_meta (k, v) VALUES ('pmp_schema', '3')");
+    // --- Verifikasi email akun customer ---
+    if (!pmpColumnExists($conn, 'customers', 'email_verified_at')) {
+        pmpAddColumn($conn, 'customers', 'email_verified_at', "DATETIME NULL");
+        pmpAddColumn($conn, 'customers', 'verify_token_hash', "VARCHAR(64) NULL");
+        pmpAddColumn($conn, 'customers', 'verify_expires', "DATETIME NULL");
+        // Akun yang sudah ada sebelum fitur ini dianggap terverifikasi (tidak terkunci keluar)
+        mysqli_query($conn, "UPDATE customers SET email_verified_at = NOW() WHERE email IS NOT NULL AND email <> ''");
+    }
+
+    mysqli_query($conn, "REPLACE INTO app_meta (k, v) VALUES ('pmp_schema', '4')");
 }

@@ -212,3 +212,29 @@ function safeError(Throwable $e, string $generic = 'Terjadi kesalahan. Coba lagi
     error_log('[tidar] ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
     return appConfig('debug', false) ? $generic . ' (' . $e->getMessage() . ')' : $generic;
 }
+
+
+/** Kirim email teks sederhana lewat mail() (di production atur SMTP/sendmail server). True bila diterima MTA. */
+function sendAppMail(string $to, string $subject, string $body): bool {
+    $from = (string)appConfig('mail_from', 'noreply@tidarteknik.my.id');
+    return (bool)@mail($to, $subject, $body, 'From: ' . $from . "\r\nContent-Type: text/plain; charset=UTF-8");
+}
+
+/**
+ * Buat token verifikasi email (berlaku 48 jam, disimpan sebagai hash) dan kirim emailnya.
+ * Kembalikan ['link' => tautan atau '', 'sent' => bool]. Tautan hanya bisa dibentuk bila base_url ada/request lokal.
+ */
+function issueEmailVerification(string $customerId, string $email, string $nama): array {
+    $token = bin2hex(random_bytes(24));
+    dbRun("UPDATE customers SET email_verified_at = NULL, verify_token_hash = ?, verify_expires = (NOW() + INTERVAL 48 HOUR) WHERE id = ?",
+        [hash('sha256', $token), $customerId]);
+    $base = appBaseUrl();
+    if ($base === '') {
+        error_log('[tidar] base_url belum diatur di config.php; email verifikasi tidak dikirim.');
+        return ['link' => '', 'sent' => false];
+    }
+    $link = $base . '/customer-verify-email.php?token=' . $token;
+    $sent = sendAppMail($email, 'Verifikasi Email Portal CV. Tidar Teknik',
+        "Halo $nama,\n\nAkun Customer Portal CV. Tidar Teknik telah dibuat untuk email ini.\nKlik tautan berikut untuk memverifikasi email Anda (berlaku 48 jam):\n$link\n\nAbaikan email ini bila Anda tidak merasa mendaftar.");
+    return ['link' => $link, 'sent' => $sent];
+}
