@@ -21,7 +21,7 @@ function pmpAddColumn(mysqli $conn, string $table, string $col, string $definiti
 }
 
 function ensurePmpSchema(mysqli $conn): void {
-    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS app_meta (k VARCHAR(50) PRIMARY KEY, v VARCHAR(100) NOT NULL)");
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS app_meta (k VARCHAR(50) PRIMARY KEY, v VARCHAR(100) NOT NULL) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
     $r = mysqli_query($conn, "SELECT v FROM app_meta WHERE k = 'pmp_schema'");
     if ($r && ($row = mysqli_fetch_row($r)) && (int)$row[0] >= 4) {
         return;
@@ -48,7 +48,7 @@ function ensurePmpSchema(mysqli $conn): void {
         UNIQUE KEY uq_prod_sup (product_id, supplier_id),
         FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
         FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
-    )");
+    ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
     // Supplier lama (kolom supplier_id) dijadikan kandidat final
     mysqli_query($conn, "INSERT IGNORE INTO product_suppliers (product_id, supplier_id, is_final)
                          SELECT id, supplier_id, 1 FROM products WHERE supplier_id IS NOT NULL");
@@ -62,7 +62,7 @@ function ensurePmpSchema(mysqli $conn): void {
         UNIQUE KEY uq_cart (customer_id, product_id),
         FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
-    )");
+    ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
     // --- Order: status pembayaran DP/Term/Partial/Paid, penerimaan, pembatalan ---
     mysqli_query($conn, "ALTER TABLE orders MODIFY status_pembayaran
@@ -103,7 +103,7 @@ function ensurePmpSchema(mysqli $conn): void {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         verified_at DATETIME NULL,
         FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-    )");
+    ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
     // --- Retur ---
     mysqli_query($conn, "CREATE TABLE IF NOT EXISTS returns (
@@ -118,14 +118,14 @@ function ensurePmpSchema(mysqli $conn): void {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         resolved_at DATETIME NULL,
         FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
-    )");
+    ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
     mysqli_query($conn, "CREATE TABLE IF NOT EXISTS return_media (
         id INT AUTO_INCREMENT PRIMARY KEY,
         return_id VARCHAR(50) NOT NULL,
         file VARCHAR(255) NOT NULL,
         tipe ENUM('foto','video') NOT NULL DEFAULT 'foto',
         FOREIGN KEY (return_id) REFERENCES returns(id) ON DELETE CASCADE
-    )");
+    ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
     // --- Notifikasi internal ---
     mysqli_query($conn, "CREATE TABLE IF NOT EXISTS notifications (
@@ -137,7 +137,7 @@ function ensurePmpSchema(mysqli $conn): void {
         is_read TINYINT(1) NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         KEY idx_notif (audience, customer_id, is_read)
-    )");
+    ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
     // --- Pembatas percobaan login / permintaan reset password ---
     mysqli_query($conn, "CREATE TABLE IF NOT EXISTS login_attempts (
@@ -147,7 +147,7 @@ function ensurePmpSchema(mysqli $conn): void {
         ip VARCHAR(45) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         KEY idx_attempt (scope, ident, ip, created_at)
-    )");
+    ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
 
     // --- Verifikasi email akun customer ---
     if (!pmpColumnExists($conn, 'customers', 'email_verified_at')) {
