@@ -363,6 +363,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="bg-orb bg-orb-3"></div>
 
   <div class="login-card">
+    <div style="margin-bottom: 16px;">
+      <a href="landing.php" style="color: var(--teal-400); text-decoration: none; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+        ← Kembali ke Katalog & Beranda
+      </a>
+    </div>
     <div class="brand">
       <div class="brand-logo-wrap">
         <?php if (file_exists(__DIR__ . '/img/logo.png')): ?>

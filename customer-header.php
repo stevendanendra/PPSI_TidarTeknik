@@ -107,6 +107,29 @@ if ($currentCust) {
       font-size: 11px;
       color: var(--navy-400);
     }
+    .btn-logout-top {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      text-decoration: none;
+      transition: all .15s ease;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .btn-logout-top:hover {
+      background: #ef4444;
+      color: #fff;
+      border-color: #ef4444;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);
+    }
 
     /* Product card grid */
     .product-grid {
@@ -414,6 +437,9 @@ if ($currentCust) {
             <div class="user-role"><?= htmlspecialchars($currentCust['kota'] ?? 'Customer Portal') ?></div>
           </div>
         </div>
+        <a href="customer-logout.php" class="btn-logout-top" id="btn-logout-topbar" title="Keluar dari akun">
+          🚪 Keluar
+        </a>
       </div>
     </header>
 
