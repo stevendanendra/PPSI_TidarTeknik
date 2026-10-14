@@ -50,6 +50,13 @@ function requireLogin(bool $json = false): void {
             echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
             exit;
         }
+        // Pengunjung yang membuka alamat root (/) diarahkan ke landing page, bukan ke login admin
+        $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        if (substr($path, -1) === '/') {
+            session_destroy();
+            header('Location: home.php');
+            exit;
+        }
         // Simpan halaman tujuan agar bisa redirect balik setelah login
         $_SESSION['auth_redirect'] = $_SERVER['REQUEST_URI'];
         session_destroy();
