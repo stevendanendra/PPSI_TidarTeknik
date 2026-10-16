@@ -314,6 +314,12 @@ $loggedOut = isset($_GET['logout']) && $_GET['logout'] == '1';
 
   <div class="login-card">
 
+    <div style="margin-bottom: 16px;">
+      <a href="landing.php" style="color: var(--teal-400); text-decoration: none; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+        ← Kembali ke Beranda / Katalog Publik
+      </a>
+    </div>
+
     <!-- Brand -->
     <div class="brand">
       <div class="brand-logo-wrap">

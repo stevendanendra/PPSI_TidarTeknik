@@ -642,6 +642,17 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', () => {
     if (window.innerWidth > 768) closeSidebar();
   });
+
+  // Forward wheel scroll to .sidebar-nav if mouse is anywhere over sidebar
+  const sb = document.getElementById('sidebar');
+  const sbNav = sb ? sb.querySelector('.sidebar-nav') : null;
+  if (sb && sbNav) {
+    sb.addEventListener('wheel', (e) => {
+      if (!sbNav.contains(e.target) || sbNav === e.target) {
+        sbNav.scrollTop += e.deltaY;
+      }
+    }, { passive: true });
+  }
 });
 
 // Menu admin tambahan (Akun Customer, Retur) + lonceng notifikasi internal
