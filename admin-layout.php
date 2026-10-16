@@ -70,6 +70,7 @@ function adminHead(string $title, string $subtitle, string $active): void {
       </div>
       <div class="topbar-actions">
         <a href="index.php" class="btn btn-ghost">← Dashboard</a>
+        <a href="logout.php" class="btn btn-ghost" style="color:var(--red-600);border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);font-size:12px">🚪 Keluar</a>
       </div>
     </header>
     <main class="page-content">
