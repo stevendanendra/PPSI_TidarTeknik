@@ -814,9 +814,9 @@ function getProductThumb($product) {
         <span>📍 Malang, Jawa Timur</span>
       </div>
       <div class="top-bar-right">
-        <a href="https://wa.me/628113633777" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px;">
+        <a href="https://wa.me/6282225255251" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:6px;">
           <i class="fa-brands fa-whatsapp" style="color:#34d399; font-size:13px;"></i>
-          <span>Konsultasi Pelanggan: <strong>0811-3633-777</strong></span>
+          <span>Konsultasi Pelanggan: <strong>0822 2525 5251</strong></span>
         </a>
       </div>
     </div>
@@ -850,7 +850,7 @@ function getProductThumb($product) {
           <i class="fa-solid fa-arrow-right-to-bracket" style="font-size: 12px;"></i>
           <span>Masuk Portal</span>
         </a>
-        <a href="https://wa.me/628113633777?text=Halo%20CV.%20Tidar%20Teknik%2C%20saya%20ingin%20dibuatkan%20akun%20Customer%20Portal." target="_blank" rel="noopener" class="btn btn-outline-dark" style="padding: 9px 18px; font-size: 13.5px;">
+        <a href="https://wa.me/6282225255251?text=Halo%20CV.%20Tidar%20Teknik%2C%20saya%20ingin%20dibuatkan%20akun%20Customer%20Portal." target="_blank" rel="noopener" class="btn btn-outline-dark" style="padding: 9px 18px; font-size: 13.5px;">
           <span>Minta Akun</span>
         </a>
       </div>
@@ -890,7 +890,7 @@ function getProductThumb($product) {
         <span class="section-eyebrow">KATALOG PILIHAN</span>
         <h2 class="section-headline">Suku Cadang &amp; Komponen Unggulan</h2>
         <p class="section-subtext">
-          Telusuri komponen mekanik ready-stock dengan standar pabrikan presisi tinggi untuk mendukung produktivitas lini mesin Anda.
+          Telusuri komponen mekanik dengan standar pabrikan presisi tinggi untuk mendukung produktivitas lini mesin Anda.
         </p>
       </div>
 
@@ -1083,7 +1083,7 @@ function getProductThumb($product) {
           <p class="footer-brand-desc">
             Supplier suku cadang teknik, rantai industri, bearing, dan perlengkapan otomasi mesin terpercaya. Melayani pengadaan profesional B2B dan sistem dropship terintegrasi.
           </p>
-          <a href="https://wa.me/628113633777" target="_blank" rel="noopener" class="btn btn-outline-white" style="font-size:12.5px; padding:8px 18px;">
+          <a href="https://wa.me/6282225255251" target="_blank" rel="noopener" class="btn btn-outline-white" style="font-size:12.5px; padding:8px 18px;">
             <i class="fa-brands fa-whatsapp" style="color:#34d399;"></i> Konsultasi WhatsApp
           </a>
         </div>
@@ -1105,7 +1105,7 @@ function getProductThumb($product) {
             <li><a href="#koleksi">Katalog Suku Cadang</a></li>
             <li><a href="#custom">Permintaan Part Khusus</a></li>
             <li><a href="customer-login.php">Masuk Customer Portal</a></li>
-            <li><a href="https://wa.me/628113633777?text=Halo%20CV.%20Tidar%20Teknik%2C%20saya%20ingin%20dibuatkan%20akun%20Customer%20Portal." target="_blank" rel="noopener">Minta Akun Baru (via WhatsApp)</a></li>
+            <li><a href="https://wa.me/6282225255251?text=Halo%20CV.%20Tidar%20Teknik%2C%20saya%20ingin%20dibuatkan%20akun%20Customer%20Portal." target="_blank" rel="noopener">Minta Akun Baru (via WhatsApp)</a></li>
             <li><a href="#alur">Alur Pemesanan</a></li>
           </ul>
         </div>
@@ -1167,7 +1167,7 @@ function getProductThumb($product) {
         <a href="customer-login.php" class="btn btn-dark" style="flex:1;">
           <i class="fa-solid fa-lock" style="font-size:11px;"></i> Masuk Portal untuk Membeli
         </a>
-        <a href="https://wa.me/628113633777?text=Halo%20CV.%20Tidar%20Teknik%2C%20saya%20ingin%20dibuatkan%20akun%20Customer%20Portal." target="_blank" rel="noopener" class="btn btn-outline-dark">
+        <a href="https://wa.me/6282225255251?text=Halo%20CV.%20Tidar%20Teknik%2C%20saya%20ingin%20dibuatkan%20akun%20Customer%20Portal." target="_blank" rel="noopener" class="btn btn-outline-dark">
           Minta Akun
         </a>
       </div>

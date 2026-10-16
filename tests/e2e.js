@@ -771,7 +771,7 @@ async function sectionL(b) {
     const leaked = suppliers.filter(n => html.includes(n) || html.includes(n.replace(/&/g, '&amp;')));
     assert(!leaked.length, 'nama supplier bocor: ' + leaked.join(', '));
     assert(!/supplier_id|supplier_nama|harga_modal|"stok"|&quot;stok&quot;/.test(html), 'kolom sensitif ada di sumber halaman');
-    assert(!/Ready Stock/i.test(html), 'klaim stok tampil');
+    assert(!/ready[- ]?stock/i.test(html), 'klaim stok tampil');
   });
   await t('L08', 'Landing tidak menautkan halaman yang dimatikan (registrasi) atau butuh login (Help Center)', async () => {
     await anon.goto(BASE + 'landing.php');
