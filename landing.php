@@ -7,10 +7,10 @@
 require_once __DIR__ . '/db.php';
 
 // Ambil semua produk aktif dari database
-$queryProducts = "SELECT p.*, s.nama AS supplier_nama 
-                  FROM products p 
-                  LEFT JOIN suppliers s ON p.supplier_id = s.id 
-                  WHERE p.is_active = 1 
+// Hanya kolom yang aman ditampilkan ke publik: JANGAN ambil supplier, harga modal, atau stok.
+$queryProducts = "SELECT p.id, p.kode, p.nama, p.kategori, p.satuan, p.spesifikasi, p.harga, p.harga_min, p.harga_max
+                  FROM products p
+                  WHERE p.is_active = 1
                   ORDER BY p.kategori ASC, p.nama ASC";
 $resProducts = mysqli_query($conn, $queryProducts);
 $products = [];
@@ -850,8 +850,8 @@ function getProductThumb($product) {
           <i class="fa-solid fa-arrow-right-to-bracket" style="font-size: 12px;"></i>
           <span>Masuk Portal</span>
         </a>
-        <a href="customer-register.php" class="btn btn-outline-dark" style="padding: 9px 18px; font-size: 13.5px;">
-          <span>Daftar Akun</span>
+        <a href="https://wa.me/628113633777?text=Halo%20CV.%20Tidar%20Teknik%2C%20saya%20ingin%20dibuatkan%20akun%20Customer%20Portal." target="_blank" rel="noopener" class="btn btn-outline-dark" style="padding: 9px 18px; font-size: 13.5px;">
+          <span>Minta Akun</span>
         </a>
       </div>
     </div>
@@ -896,11 +896,11 @@ function getProductThumb($product) {
 
       <!-- Category Filter Pills -->
       <div class="catalog-filter-row">
-        <button type="button" class="filter-pill active" onclick="filterGallery('all', this)">
+        <button type="button" class="filter-pill active" data-category="all" onclick="filterGallery(this.dataset.category, this)">
           Semua Koleksi (<?= count($products) ?>)
         </button>
         <?php foreach ($categories as $cat): ?>
-          <button type="button" class="filter-pill" onclick="filterGallery('<?= htmlspecialchars($cat) ?>', this)">
+          <button type="button" class="filter-pill" data-category="<?= htmlspecialchars($cat) ?>" onclick="filterGallery(this.dataset.category, this)">
             <?= htmlspecialchars($cat) ?>
           </button>
         <?php endforeach; ?>
@@ -942,7 +942,7 @@ function getProductThumb($product) {
                     type="button" 
                     class="btn btn-outline-dark" 
                     style="padding: 7px 16px; font-size:12.5px;"
-                    onclick="openProductModal(<?= htmlspecialchars(json_encode($p), ENT_QUOTES, 'UTF-8') ?>)"
+                    onclick="openProductModal(<?= htmlspecialchars(json_encode(['kategori' => $p['kategori'], 'nama' => $p['nama'], 'kode' => $p['kode'], 'spesifikasi' => $p['spesifikasi'], 'harga' => $p['harga'], 'harga_min' => $p['harga_min'], 'harga_max' => $p['harga_max']], JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>)"
                   >
                     Detail
                   </button>
@@ -1105,8 +1105,8 @@ function getProductThumb($product) {
             <li><a href="#koleksi">Katalog Suku Cadang</a></li>
             <li><a href="#custom">Permintaan Part Khusus</a></li>
             <li><a href="customer-login.php">Masuk Customer Portal</a></li>
-            <li><a href="customer-register.php">Registrasi Akun Baru</a></li>
-            <li><a href="customer-help.php">Help Center &amp; Bantuan</a></li>
+            <li><a href="https://wa.me/628113633777?text=Halo%20CV.%20Tidar%20Teknik%2C%20saya%20ingin%20dibuatkan%20akun%20Customer%20Portal." target="_blank" rel="noopener">Minta Akun Baru (via WhatsApp)</a></li>
+            <li><a href="#alur">Alur Pemesanan</a></li>
           </ul>
         </div>
 
@@ -1160,15 +1160,15 @@ function getProductThumb($product) {
           <div style="font-size:11px; text-transform:uppercase; color:var(--gray-400); font-weight:600;">Estimasi Harga</div>
           <div id="modalPrice" style="font-family:var(--font-heading); font-size:20px; font-weight:800; color:var(--gray-900);">Rp 0</div>
         </div>
-        <span style="font-size:12px; color:var(--gray-600); font-weight:600;"><i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Ready Stock</span>
+        <span style="font-size:12px; color:var(--gray-600); font-weight:600;"><i class="fa-solid fa-circle-check" style="color:#10b981;"></i> Ketersediaan dikonfirmasi saat pemesanan</span>
       </div>
 
       <div style="display:flex; gap:10px;">
         <a href="customer-login.php" class="btn btn-dark" style="flex:1;">
           <i class="fa-solid fa-lock" style="font-size:11px;"></i> Masuk Portal untuk Membeli
         </a>
-        <a href="customer-register.php" class="btn btn-outline-dark">
-          Daftar
+        <a href="https://wa.me/628113633777?text=Halo%20CV.%20Tidar%20Teknik%2C%20saya%20ingin%20dibuatkan%20akun%20Customer%20Portal." target="_blank" rel="noopener" class="btn btn-outline-dark">
+          Minta Akun
         </a>
       </div>
     </div>

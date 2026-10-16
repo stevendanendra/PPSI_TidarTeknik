@@ -31,11 +31,14 @@ Persiapan: import `db/ppsi_tidarteknik.sql`, buat `config.php` dari `config.samp
 
 | ID | Skenario | Hasil yang diharapkan | Otomatis | Hasil | Catatan |
 |---|---|---|---|---|---|
-| L01 | Landing page publik | Tombol Masuk ada; tidak ada tautan login admin; harga tidak tampil | Ya | | |
+| L01 | Landing page publik | Tombol Masuk ada; tidak ada tautan login admin | Ya | | |
 | L02 | Alamat root (`/`) | Menampilkan landing page, bukan login admin | Ya | | |
 | L03 | Halaman login/lupa password/kirim ulang customer | Tidak ada tautan/teks login admin | Ya | | |
 | L04 | Logout customer | Kembali ke landing page | Ya | | |
 | L05 | Pengunjung buka halaman customer langsung | Diarahkan ke login customer | Ya | | |
+| L07 | Data sensitif di landing | Nama supplier, harga modal, dan stok tidak ada di HTML | Ya | | |
+| L08 | Tautan di landing | Tidak ada tautan ke registrasi (dimatikan) atau Help Center (butuh login) | Ya | | |
+| L09 | Filter & detail produk | Filter kategori dan modal detail berfungsi, termasuk nama kategori ber-kutip | Ya | | |
 
 ## B. Katalog & supplier
 

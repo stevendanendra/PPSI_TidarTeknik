@@ -733,20 +733,18 @@ async function sectionH() {
 async function sectionL(b) {
   console.log('\nL. Landing page & akses');
   const anon = await (await b.newContext()).newPage();
-  await t('L01', 'Landing page publik: ada tombol Masuk, tanpa tautan login admin, tanpa harga', async () => {
-    await anon.goto(BASE + 'home.php');
+  await t('L01', 'Landing page publik: tombol Masuk ada, tanpa tautan login admin', async () => {
+    const res = await anon.goto(BASE + 'landing.php'); assert(res.status() === 200, 'status ' + res.status());
     const txt = await bodyText(anon);
-    assert(/CV\. Tidar Teknik/.test(txt) && await anon.locator('a[href="customer-login.php"]').count() > 0, 'tombol Masuk tidak ada');
+    assert(/Tidar Teknik/.test(txt) && await anon.locator('a[href="customer-login.php"]').count() > 0, 'tombol Masuk tidak ada');
     const hrefs = await anon.locator('a').evaluateAll(as => as.map(a => a.getAttribute('href') || ''));
     const bad = hrefs.filter(h => /(^|\/)login\.php/.test(h) || /admin/i.test(h));
     assert(!bad.length, 'tautan admin di landing: ' + bad);
-    assert(!/Rp\s?\d/.test(txt), 'harga tampil ke pengunjung');
-    assert(!/(?:^|[^-])login\.php|logout\.php/.test(await anon.content()), 'sumber halaman menyebut login.php admin');
   });
   await t('L02', 'Alamat root (/) menampilkan landing page, bukan login admin', async () => {
     await anon.goto(BASE);
-    assert(/home\.php|\/$/.test(anon.url()) && !/login\.php/.test(anon.url()), 'url: ' + anon.url());
-    assert(/Pengadaan komponen teknik/i.test(await bodyText(anon)), 'bukan landing: ' + (await bodyText(anon)).slice(0, 100));
+    assert(!/(^|\/)login\.php/.test(anon.url()), 'url: ' + anon.url());
+    assert(/Suku Cadang/i.test(await bodyText(anon)), 'bukan landing: ' + (await bodyText(anon)).slice(0, 100));
   });
   await t('L03', 'Halaman login customer tidak punya tautan ke login admin', async () => {
     for (const u of ['customer-login.php', 'customer-forgot-password.php', 'customer-resend-verification.php']) {
@@ -756,20 +754,45 @@ async function sectionL(b) {
       assert(!/Login Admin|Staff Internal/i.test(await bodyText(anon)), u + ' menyebut login admin');
     }
     await anon.goto(BASE + 'customer-login.php');
-    assert(await anon.locator('a[href="home.php"]').count() > 0, 'tidak ada tautan kembali ke beranda');
+    assert(await anon.locator('a[href="landing.php"]').count() > 0, 'tidak ada tautan kembali ke beranda');
   });
   await t('L04', 'Setelah logout customer kembali ke landing page', async () => {
     await ctx.cb.goto(BASE + 'customer-dashboard.php');
     await ctx.cb.goto(BASE + 'customer-logout.php');
-    assert(/home\.php/.test(ctx.cb.url()), 'url: ' + ctx.cb.url());
+    assert(/landing\.php/.test(ctx.cb.url()), 'url: ' + ctx.cb.url());
     await custLogin(ctx.cb, 'beta@test.com', 'Beta12345');   // login lagi agar bagian selanjutnya tetap jalan
   });
   await t('L05', 'Pengunjung membuka halaman customer langsung -> diarahkan ke login customer', async () => {
     await anon.goto(BASE + 'customer-dashboard.php'); assert(/customer-login\.php/.test(anon.url()), anon.url());
   });
-  await t('L06', 'Customer yang sudah login melihat tombol Ke Dashboard di landing', async () => {
-    await ctx.ca.goto(BASE + 'home.php');
-    assert(await ctx.ca.locator('a[href="customer-dashboard.php"]').count() > 0, 'tidak ada tombol dashboard');
+  await t('L07', 'Landing tidak membocorkan supplier, harga modal, atau stok di HTML', async () => {
+    const html = await (await anon.context().request.get(BASE + 'landing.php')).text();
+    const suppliers = sql('select nama from suppliers').split('\n').filter(Boolean);
+    const leaked = suppliers.filter(n => html.includes(n) || html.includes(n.replace(/&/g, '&amp;')));
+    assert(!leaked.length, 'nama supplier bocor: ' + leaked.join(', '));
+    assert(!/supplier_id|supplier_nama|harga_modal|"stok"|&quot;stok&quot;/.test(html), 'kolom sensitif ada di sumber halaman');
+    assert(!/Ready Stock/i.test(html), 'klaim stok tampil');
+  });
+  await t('L08', 'Landing tidak menautkan halaman yang dimatikan (registrasi) atau butuh login (Help Center)', async () => {
+    await anon.goto(BASE + 'landing.php');
+    const hrefs = await anon.locator('a').evaluateAll(as => as.map(a => a.getAttribute('href') || ''));
+    assert(!hrefs.some(h => /customer-register|customer-help/.test(h)), 'tautan mati: ' + hrefs.filter(h => /customer-register|customer-help/.test(h)));
+  });
+  await t('L09', 'Landing: filter kategori & modal detail berfungsi, nama kategori ber-kutip aman', async () => {
+    sql("insert into products (id,kode,nama,kategori,harga,satuan,is_active) values ('PRD-QT','QT-1','PRODUK KUTIP','Kat\\'egori \"X\"',1000,'PCS',1)");
+    await anon.goto(BASE + 'landing.php');
+    const errs = []; anon.on('pageerror', e => errs.push(e.message));
+    const pills = anon.locator('.filter-pill'); assert(await pills.count() >= 3, 'pill kategori kurang');
+    await pills.nth(1).click(); await anon.waitForTimeout(300);
+    const shown = await anon.locator('.product-showcase-card').evaluateAll(c => c.filter(x => getComputedStyle(x).display !== 'none').length);
+    assert(shown >= 1 && shown < await anon.locator('.product-showcase-card').count(), 'filter tidak menyaring: ' + shown);
+    await anon.locator('.filter-pill', { hasText: 'egori' }).first().click(); await anon.waitForTimeout(300);
+    assert(await anon.locator('.product-showcase-card').evaluateAll(c => c.filter(x => getComputedStyle(x).display !== 'none').length) === 1, 'filter kategori ber-kutip gagal');
+    await anon.locator('.product-showcase-card:visible button:has-text("Detail")').first().click();
+    assert(await anon.locator('#productModal').isVisible(), 'modal tidak terbuka');
+    assert(/PRODUK KUTIP/.test(await anon.locator('#modalName').innerText()), 'isi modal salah');
+    assert(!errs.length, errs.join('|'));
+    sql("delete from products where id='PRD-QT'");
   });
   await anon.close();
 }

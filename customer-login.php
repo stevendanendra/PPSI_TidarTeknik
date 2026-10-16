@@ -442,7 +442,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php if ($showResend): ?><a href="customer-resend-verification.php">📧 Kirim ulang email verifikasi</a><br><?php endif; ?>
         <a href="customer-forgot-password.php">Lupa password?</a><br>
         <?php if ($allowRegister): ?>Belum punya akun? <a href="customer-register.php">Daftar sekarang</a><?php else: ?>Akun customer dibuat oleh admin CV. Tidar Teknik.<?php endif; ?><br>
-        <a href="home.php" style="font-size:12px">← Kembali ke beranda</a>
+
       </div>
     </form>
   </div>

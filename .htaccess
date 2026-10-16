@@ -1,5 +1,5 @@
 # Halaman awal (/) adalah landing page publik; admin masuk lewat /login.php
-DirectoryIndex home.php index.php
+DirectoryIndex landing.php index.php
 
 RewriteEngine On
 # 1. Tangani khusus file print yang ada spasi atau tanda hubung

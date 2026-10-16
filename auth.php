@@ -54,7 +54,7 @@ function requireLogin(bool $json = false): void {
         $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
         if (substr($path, -1) === '/') {
             session_destroy();
-            header('Location: home.php');
+            header('Location: landing.php');
             exit;
         }
         // Simpan halaman tujuan agar bisa redirect balik setelah login
