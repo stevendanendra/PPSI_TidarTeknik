@@ -14,7 +14,7 @@ include 'db.php';
   <title>Dashboard — CV. Tidar Teknik</title>
   <meta name="description" content="Sistem Manajemen Dokumen CV. Tidar Teknik — Purchase Order & Invoice">
   <link rel="stylesheet" href="css/style.css?v=<?= time() ?>">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="js/vendor/chart.umd.js"></script> <!-- Chart.js 4.4.0 (MIT) disajikan lokal agar tidak bergantung CDN -->
   <style>
     .brand-icon img {
       width: 40px;

@@ -407,6 +407,11 @@ switch ($action) {
         if (!$src) respond(['status' => 'error', 'message' => 'Penawaran tidak ditemukan'], 404);
         $newId = newId('pn');
         transaction($conn, function () use ($conn, $src, $newId) {
+            // Semua versi satu grup memakai nomor yang sama; isi dulu bila nomor induk masih kosong
+            if ($src['nomor'] === '') {
+                $src['nomor'] = nextDocNumber('penawaran', 'SP');
+                run($conn, "UPDATE penawaran SET nomor = ? WHERE id = ?", [$src['nomor'], $src['id']]);
+            }
             $root = $src['parent_id'] ?: $src['id'];
             $maxV = dbRow("SELECT MAX(versi) AS m FROM penawaran WHERE id = ? OR parent_id = ?", [$root, $root]);
             $versi = (int)($maxV['m'] ?? 1) + 1;

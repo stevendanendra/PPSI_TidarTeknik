@@ -212,3 +212,104 @@ function safeError(Throwable $e, string $generic = 'Terjadi kesalahan. Coba lagi
     error_log('[tidar] ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine());
     return appConfig('debug', false) ? $generic . ' (' . $e->getMessage() . ')' : $generic;
 }
+
+
+/**
+ * Kirim email teks. Bila 'smtp_host' diisi di config.php, dikirim lewat SMTP (STARTTLS/SSL + login);
+ * bila kosong, memakai mail() bawaan PHP. True bila diterima server surat.
+ */
+function sendAppMail(string $to, string $subject, string $body): bool {
+    $clean = fn(string $s) => trim(preg_replace('/[\r\n]+/', ' ', $s)); // cegah header injection
+    $to = $clean($to);
+    $subject = $clean($subject);
+    $from = $clean((string)appConfig('mail_from', 'noreply@tidarteknik.my.id'));
+    $fromName = $clean((string)appConfig('mail_from_name', 'CV. Tidar Teknik'));
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL) || !filter_var($from, FILTER_VALIDATE_EMAIL)) return false;
+
+    $host = trim((string)appConfig('smtp_host', ''));
+    if ($host === '') {
+        return (bool)@mail($to, $subject, $body, 'From: ' . $from . "\r\nContent-Type: text/plain; charset=UTF-8");
+    }
+    try {
+        return smtpSend($host, (int)appConfig('smtp_port', 587), (string)appConfig('smtp_secure', 'tls'),
+            (string)appConfig('smtp_user', ''), (string)appConfig('smtp_pass', ''), $from, $fromName, $to, $subject, $body);
+    } catch (Throwable $e) {
+        error_log('[tidar] SMTP gagal: ' . $e->getMessage()); // kata sandi tidak pernah dicatat
+        return false;
+    }
+}
+
+/** Klien SMTP minimal (tanpa library). $secure: 'tls' = STARTTLS (587), 'ssl' = TLS langsung (465), '' = polos. */
+function smtpSend(string $host, int $port, string $secure, string $user, string $pass, string $from, string $fromName, string $to, string $subject, string $body): bool {
+    $timeout = 12;
+    $fp = @stream_socket_client(($secure === 'ssl' ? 'ssl://' : 'tcp://') . $host . ':' . $port, $en, $es, $timeout);
+    if (!$fp) throw new RuntimeException("tidak bisa terhubung ke $host:$port ($es)");
+    stream_set_timeout($fp, $timeout);
+    $read = function () use ($fp): array {
+        $code = ''; $text = '';
+        while (($line = fgets($fp, 1024)) !== false) {
+            $text .= $line; $code = substr($line, 0, 3);
+            if (strlen($line) < 4 || $line[3] !== '-') break;
+        }
+        return [(int)$code, $text];
+    };
+    $cmd = function (string $c, array $ok) use ($fp, $read): string {
+        fwrite($fp, $c . "\r\n");
+        [$code, $text] = $read();
+        if (!in_array($code, $ok, true)) throw new RuntimeException("SMTP menolak (kode $code)");
+        return $text;
+    };
+    [$code] = $read();
+    if ($code !== 220) throw new RuntimeException("salam server tidak valid (kode $code)");
+    $ehlo = 'EHLO ' . (gethostname() ?: 'localhost');
+    $cmd($ehlo, [250]);
+    if ($secure === 'tls') {
+        $cmd('STARTTLS', [220]);
+        if (!stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) throw new RuntimeException('STARTTLS gagal');
+        $cmd($ehlo, [250]);
+    }
+    if ($user !== '') {
+        $cmd('AUTH LOGIN', [334]);
+        $cmd(base64_encode($user), [334]);
+        $cmd(base64_encode($pass), [235]);
+    }
+    $cmd("MAIL FROM:<$from>", [250]);
+    $cmd("RCPT TO:<$to>", [250, 251]);
+    $cmd('DATA', [354]);
+    $enc = fn(string $s) => '=?UTF-8?B?' . base64_encode($s) . '?=';
+    $headers = [
+        'Date: ' . date('r'),
+        'From: ' . $enc($fromName) . " <$from>",
+        "To: <$to>",
+        'Subject: ' . $enc($subject),
+        'Message-ID: <' . bin2hex(random_bytes(8)) . '@' . (preg_replace('/^.*@/', '', $from)) . '>',
+        'MIME-Version: 1.0',
+        'Content-Type: text/plain; charset=UTF-8',
+        'Content-Transfer-Encoding: base64',
+    ];
+    fwrite($fp, implode("\r\n", $headers) . "\r\n\r\n" . chunk_split(base64_encode($body), 76, "\r\n") . "\r\n.\r\n");
+    [$code] = $read();
+    if ($code !== 250) throw new RuntimeException("pesan ditolak (kode $code)");
+    @fwrite($fp, "QUIT\r\n");
+    fclose($fp);
+    return true;
+}
+
+/**
+ * Buat token verifikasi email (berlaku 48 jam, disimpan sebagai hash) dan kirim emailnya.
+ * Kembalikan ['link' => tautan atau '', 'sent' => bool]. Tautan hanya bisa dibentuk bila base_url ada/request lokal.
+ */
+function issueEmailVerification(string $customerId, string $email, string $nama): array {
+    $token = bin2hex(random_bytes(24));
+    dbRun("UPDATE customers SET email_verified_at = NULL, verify_token_hash = ?, verify_expires = (NOW() + INTERVAL 48 HOUR) WHERE id = ?",
+        [hash('sha256', $token), $customerId]);
+    $base = appBaseUrl();
+    if ($base === '') {
+        error_log('[tidar] base_url belum diatur di config.php; email verifikasi tidak dikirim.');
+        return ['link' => '', 'sent' => false];
+    }
+    $link = $base . '/customer-verify-email.php?token=' . $token;
+    $sent = sendAppMail($email, 'Verifikasi Email Portal CV. Tidar Teknik',
+        "Halo $nama,\n\nAkun Customer Portal CV. Tidar Teknik telah dibuat untuk email ini.\nKlik tautan berikut untuk memverifikasi email Anda (berlaku 48 jam):\n$link\n\nAbaikan email ini bila Anda tidak merasa mendaftar.");
+    return ['link' => $link, 'sent' => $sent];
+}

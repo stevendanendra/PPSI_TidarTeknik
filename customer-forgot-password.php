@@ -25,12 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $base = appBaseUrl();
             if ($base !== '') {
                 $link = $base . '/customer-reset-password.php?token=' . $token;
-                @mail($email, 'Reset Password Portal CV. Tidar Teknik', "Halo {$cust['nama']},
+                sendAppMail($email, 'Reset Password Portal CV. Tidar Teknik', "Halo {$cust['nama']},
 
 Klik tautan berikut untuk mengatur ulang password (berlaku 1 jam):
 $link
 
-Abaikan email ini bila Anda tidak memintanya.", 'From: ' . appConfig('mail_from', 'noreply@tidarteknik.my.id'));
+Abaikan email ini bila Anda tidak memintanya.");
                 // Tautan di layar hanya untuk pengembangan lokal (tidak pernah di server publik)
                 if (appConfig('show_reset_link', false) && isLocalRequest()) $devLink = $link;
             } else {

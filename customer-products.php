@@ -5,7 +5,7 @@
  */
 
 $pageTitle = 'Marketplace & Katalog Produk';
-$pageSubtitle = 'Cari komponen teknik & industri ready stock atau ajukan permintaan barang';
+$pageSubtitle = 'Cari komponen teknik & industri atau ajukan permintaan barang';
 require_once 'customer-header.php';
 
 // Parameter pencarian & filter

@@ -17,6 +17,7 @@ if (isCustomerLoggedIn()) {
 $error   = '';
 $success = '';
 $allowRegister = (bool)appConfig('allow_customer_register', false);
+$showResend = false;
 
 if (isset($_GET['registered']) && $_GET['registered'] == '1') {
     $success = 'Pendaftaran berhasil! Silakan masuk dengan email dan password Anda.';
@@ -40,6 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($okPass && $cust['status'] !== 'active') {
             $error = 'Akun Anda sedang dinonaktifkan. Silakan hubungi admin CV. Tidar Teknik.';
+        } elseif ($okPass && appConfig('require_email_verification', true) && empty($cust['email_verified_at'])) {
+            $error = 'Email Anda belum diverifikasi. Buka tautan verifikasi yang dikirim ke email Anda, atau kirim ulang di bawah.';
+            $showResend = true;
         } elseif ($okPass) {
             throttleClear('customer', $email);
             session_regenerate_id(true); // cegah session fixation
@@ -363,6 +367,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <div class="bg-orb bg-orb-3"></div>
 
   <div class="login-card">
+    <div style="margin-bottom: 16px;">
+      <a href="landing.php" style="color: var(--teal-400); text-decoration: none; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px;">
+        ← Kembali ke Katalog & Beranda
+      </a>
+    </div>
     <div class="brand">
       <div class="brand-logo-wrap">
         <?php if (file_exists(__DIR__ . '/img/logo.png')): ?>
@@ -430,11 +439,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </button>
 
       <div class="card-footer">
+        <?php if ($showResend): ?><a href="customer-resend-verification.php">📧 Kirim ulang email verifikasi</a><br><?php endif; ?>
         <a href="customer-forgot-password.php">Lupa password?</a><br>
         <?php if ($allowRegister): ?>Belum punya akun? <a href="customer-register.php">Daftar sekarang</a><?php else: ?>Akun customer dibuat oleh admin CV. Tidar Teknik.<?php endif; ?><br>
-        <span style="font-size:11.5px;display:inline-block;margin-top:8px">
-          Staff Internal Tidar Teknik? <a href="login.php" style="color:var(--navy-300)">Login Admin di sini</a>
-        </span>
+
       </div>
     </form>
   </div>

@@ -38,9 +38,19 @@ switch ($action) {
 
     case 'add_to_cart':
         $pid = trim($_POST['product_id'] ?? '');
-        $qty = min(100000, max(1, (int)($_POST['qty'] ?? 1)));
+        $rawQty = $_POST['qty'] ?? 1;
+        $qty = is_numeric($rawQty) ? (float)$rawQty : 0.0;
+        if (!is_finite($qty) || $qty < 1 || $qty > 100000 || floor($qty) != $qty) {
+            echo json_encode(['status' => 'error', 'message' => 'Jumlah tidak valid (bilangan bulat 1–100.000).']);
+            break;
+        }
         if (!activeProduct($pid)) {
             echo json_encode(['status' => 'error', 'message' => 'Produk tidak ditemukan']);
+            break;
+        }
+        $inCart = (float)(dbRow("SELECT qty FROM cart_items WHERE customer_id = ? AND product_id = ?", [$cId, $pid])['qty'] ?? 0);
+        if ($inCart + $qty > 100000) {
+            echo json_encode(['status' => 'error', 'message' => 'Total jumlah di keranjang untuk barang ini maksimal 100.000.']);
             break;
         }
         dbRun("INSERT INTO cart_items (customer_id, product_id, qty) VALUES (?, ?, ?)
